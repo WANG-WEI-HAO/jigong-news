@@ -12,14 +12,20 @@
     .date { font-size: 0.9em; color: #888; }
     .text { margin-top: 0.5em; }
     img { max-width: 100%; margin-top: 1em; border-radius: 6px; }
-    #search, #datePicker { margin-bottom: 2em; padding: 0.5em; width: 100%; max-width: 400px; font-size: 1em; }
-    #datePicker { margin-top: 0.5em; }
+    .input-row { display: flex; gap: 1em; margin-bottom: 2em; }
+    #search, #datePicker { padding: 0.5em; width: 100%; max-width: 400px; font-size: 1em; margin-bottom: 0; }
+    #datePicker { margin-top: 0; }
+    @media (max-width: 700px) {
+      .input-row { flex-direction: column; gap: 0.5em; }
+    }
   </style>
 </head>
 <body>
   <h1>濟公報(每日7:00更新)</h1>
-  <input id="search" type="text" placeholder="搜尋內容..." />
-  <input id="datePicker" type="text" placeholder="選擇日期..." readonly />
+  <div class="input-row">
+    <input id="search" type="text" placeholder="搜尋內容..." />
+    <input id="datePicker" type="text" placeholder="選擇日期..." readonly />
+  </div>
   <div id="content">
     <!-- 爬蟲產生的內容將會被插入在這 -->
   </div>
