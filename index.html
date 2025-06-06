@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>濟公報(每日7:00更新)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; }
+    h1 { color: #5a4fcf; }
+    .post { background: white; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .date { font-size: 0.9em; color: #888; }
+    .text { margin-top: 0.5em; }
+    img { max-width: 100%; margin-top: 1em; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>濟公師父最新開示（每日更新）</h1>
+  <div id="content">
+    <!-- 爬蟲產生的內容將會被插入在這 -->
+  </div>
+  <script>
+    // 動態載入 JSON
+    fetch("posts.json")
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById("content");
+        data.forEach(post => {
+          const div = document.createElement("div");
+          div.className = "post";
+          div.innerHTML = `
+            <div class="date">${post.date || ""}</div>
+            <div class="text">${(post.text || "").replace(/\n/g, "<br>")}</div>
+            ${post.image ? `<img src="${post.image}" alt="圖片">` : ""}
+          `;
+          container.appendChild(div);
+        });
+      });
+  </script>
+</body>
+</html>
