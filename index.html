@@ -12,7 +12,7 @@
     .date { font-size: 0.9em; color: #888; }
     .text { margin-top: 0.5em; }
     img { max-width: 100%; margin-top: 1em; border-radius: 6px; }
-    .input-row { display: flex; gap: 1em; margin-bottom: 2em; }
+    .input-row { display: flex; gap: 1em; margin-bottom: 2em; align-items: center; }
     #search, #datePicker {
       padding: 0.5em;
       width: 180px;
@@ -29,6 +29,19 @@
       outline: none;
     }
     #datePicker { margin-top: 0; }
+    .reset-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.5em;
+      color: #5a4fcf;
+      padding: 0.2em 0.5em;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .reset-btn:hover {
+      background: #ecebfa;
+    }
     @media (max-width: 700px) {
       .input-row { flex-direction: column; gap: 0.5em; }
       #search, #datePicker { width: 100%; }
@@ -40,6 +53,9 @@
   <div class="input-row">
     <input id="search" type="text" placeholder="搜尋內容..." />
     <input id="datePicker" type="text" placeholder="選擇日期..." readonly />
+    <button id="resetBtn" class="reset-btn" title="重置搜尋與日期" aria-label="重置">
+      &#x21bb;
+    </button>
   </div>
   <div id="content">
     <!-- 爬蟲產生的內容將會被插入在這 -->
@@ -48,6 +64,7 @@
   <script>
     let allPosts = [];
     let filteredPosts = [];
+    let datePickerInstance = null;
 
     function render(posts) {
       const container = document.getElementById("content");
@@ -69,25 +86,28 @@
       return [...new Set(posts.map(post => post.date).filter(Boolean))].sort((a, b) => b.localeCompare(a));
     }
 
-    fetch("posts.json")
-      .then(res => res.json())
-      .then(data => {
-        // 依日期新到舊排序
-        allPosts = data.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-        filteredPosts = allPosts;
-        render(filteredPosts);
+    function fetchAndRender() {
+      fetch("posts.json")
+        .then(res => res.json())
+        .then(data => {
+          // 依日期新到舊排序
+          allPosts = data.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+          filteredPosts = allPosts;
+          render(filteredPosts);
 
-        // 初始化日期選擇器
-        flatpickr("#datePicker", {
-          dateFormat: "Y-m-d",
-          disableMobile: true,
-          locale: "zh_tw",
-          onChange: function(selectedDates, dateStr) {
-            filterAndRender();
-          },
-          enable: getAllDates(allPosts)
+          // 初始化日期選擇器
+          if (datePickerInstance) datePickerInstance.destroy();
+          datePickerInstance = flatpickr("#datePicker", {
+            dateFormat: "Y-m-d",
+            disableMobile: true,
+            locale: "zh_tw",
+            onChange: function(selectedDates, dateStr) {
+              filterAndRender();
+            },
+            enable: getAllDates(allPosts)
+          });
         });
-      });
+    }
 
     // 搜尋與日期篩選
     function filterAndRender() {
@@ -103,6 +123,16 @@
 
     document.getElementById("search").addEventListener("input", filterAndRender);
     document.getElementById("datePicker").addEventListener("change", filterAndRender);
+
+    // 重置按鈕功能
+    document.getElementById("resetBtn").addEventListener("click", function() {
+      document.getElementById("search").value = "";
+      document.getElementById("datePicker").value = "";
+      filterAndRender();
+    });
+
+    // 頁面載入時自動載入資料
+    fetchAndRender();
   </script>
 </body>
 </html>
