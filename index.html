@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>濟公報(每日7:00更新)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
     body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; }
     h1 { color: #5a4fcf; }
@@ -11,17 +12,21 @@
     .date { font-size: 0.9em; color: #888; }
     .text { margin-top: 0.5em; }
     img { max-width: 100%; margin-top: 1em; border-radius: 6px; }
-    #search { margin-bottom: 2em; padding: 0.5em; width: 100%; max-width: 400px; font-size: 1em; }
+    #search, #datePicker { margin-bottom: 2em; padding: 0.5em; width: 100%; max-width: 400px; font-size: 1em; }
+    #datePicker { margin-top: 0.5em; }
   </style>
 </head>
 <body>
-  <h1>濟公師父最新開示（每日更新）</h1>
+  <h1>濟公報(每日7:00更新)</h1>
   <input id="search" type="text" placeholder="搜尋內容..." />
+  <input id="datePicker" type="text" placeholder="選擇日期..." readonly />
   <div id="content">
     <!-- 爬蟲產生的內容將會被插入在這 -->
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script>
     let allPosts = [];
+    let filteredPosts = [];
 
     function render(posts) {
       const container = document.getElementById("content");
@@ -38,26 +43,45 @@
       });
     }
 
+    // 取得所有日期（去重複）
+    function getAllDates(posts) {
+      return [...new Set(posts.map(post => post.date).filter(Boolean))].sort((a, b) => b.localeCompare(a));
+    }
+
     fetch("posts.json")
       .then(res => res.json())
       .then(data => {
         // 依日期新到舊排序
         allPosts = data.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-        render(allPosts);
+        filteredPosts = allPosts;
+        render(filteredPosts);
+
+        // 初始化日期選擇器
+        flatpickr("#datePicker", {
+          dateFormat: "Y-m-d",
+          disableMobile: true,
+          locale: "zh_tw",
+          onChange: function(selectedDates, dateStr) {
+            filterAndRender();
+          },
+          enable: getAllDates(allPosts)
+        });
       });
 
-    document.getElementById("search").addEventListener("input", function() {
-      const keyword = this.value.trim();
-      if (!keyword) {
-        render(allPosts);
-      } else {
-        const filtered = allPosts.filter(post =>
-          (post.text || "").includes(keyword) ||
-          (post.date || "").includes(keyword)
-        );
-        render(filtered);
-      }
-    });
+    // 搜尋與日期篩選
+    function filterAndRender() {
+      const keyword = document.getElementById("search").value.trim();
+      const date = document.getElementById("datePicker").value.trim();
+      filteredPosts = allPosts.filter(post => {
+        const matchText = !keyword || (post.text || "").includes(keyword) || (post.date || "").includes(keyword);
+        const matchDate = !date || post.date === date;
+        return matchText && matchDate;
+      });
+      render(filteredPosts);
+    }
+
+    document.getElementById("search").addEventListener("input", filterAndRender);
+    document.getElementById("datePicker").addEventListener("change", filterAndRender);
   </script>
 </body>
 </html>
