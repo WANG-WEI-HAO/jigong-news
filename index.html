@@ -11,30 +11,53 @@
     .date { font-size: 0.9em; color: #888; }
     .text { margin-top: 0.5em; }
     img { max-width: 100%; margin-top: 1em; border-radius: 6px; }
+    #search { margin-bottom: 2em; padding: 0.5em; width: 100%; max-width: 400px; font-size: 1em; }
   </style>
 </head>
 <body>
   <h1>濟公師父最新開示（每日更新）</h1>
+  <input id="search" type="text" placeholder="搜尋內容..." />
   <div id="content">
     <!-- 爬蟲產生的內容將會被插入在這 -->
   </div>
   <script>
-    // 動態載入 JSON
+    let allPosts = [];
+
+    function render(posts) {
+      const container = document.getElementById("content");
+      container.innerHTML = "";
+      posts.forEach(post => {
+        const div = document.createElement("div");
+        div.className = "post";
+        div.innerHTML = `
+          <div class="date">${post.date || ""}</div>
+          <div class="text">${(post.text || "").replace(/\n/g, "<br>")}</div>
+          ${post.image ? `<img src="${post.image}" alt="圖片">` : ""}
+        `;
+        container.appendChild(div);
+      });
+    }
+
     fetch("posts.json")
       .then(res => res.json())
       .then(data => {
-        const container = document.getElementById("content");
-        data.forEach(post => {
-          const div = document.createElement("div");
-          div.className = "post";
-          div.innerHTML = `
-            <div class="date">${post.date || ""}</div>
-            <div class="text">${(post.text || "").replace(/\n/g, "<br>")}</div>
-            ${post.image ? `<img src="${post.image}" alt="圖片">` : ""}
-          `;
-          container.appendChild(div);
-        });
+        // 依日期新到舊排序
+        allPosts = data.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        render(allPosts);
       });
+
+    document.getElementById("search").addEventListener("input", function() {
+      const keyword = this.value.trim();
+      if (!keyword) {
+        render(allPosts);
+      } else {
+        const filtered = allPosts.filter(post =>
+          (post.text || "").includes(keyword) ||
+          (post.date || "").includes(keyword)
+        );
+        render(filtered);
+      }
+    });
   </script>
 </body>
 </html>
