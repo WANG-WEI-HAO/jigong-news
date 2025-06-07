@@ -1,38 +1,60 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-import datetime
+from datetime import datetime
+import os
 
-url = "https://t.me/s/jigongnews"
-res = requests.get(url)
-soup = BeautifulSoup(res.text, "html.parser")
+URL = "https://t.me/s/jigongnews/2062"
+OUTPUT_FILE = "posts.json"
 
-posts = []
-for msg in soup.select(".tgme_widget_message"):
-    text_div = msg.select_one(".tgme_widget_message_text")
-    text = text_div.get_text(strip=True) if text_div else ""
+def fetch_telegram_articles(url):
+    print("Fetching Telegram messages...")
+    res = requests.get(url)
+    res.raise_for_status()
 
-    # 取得時間
-    time_tag = msg.select_one(".tgme_widget_message_date time")
-    date_str = ""
-    if time_tag and time_tag.has_attr("datetime"):
-        # 例：2025-06-07T00:00:00+00:00
-        date_str = time_tag["datetime"][:10]
+    soup = BeautifulSoup(res.text, "html.parser")
+    messages = soup.select(".tgme_widget_message_text")
+
+    articles = []
+    for i, msg in enumerate(messages, 1):
+        text = msg.get_text(strip=True)
+        if text:
+            articles.append({
+                "id": i,
+                "content": text
+            })
+    return articles
+
+def load_old_posts():
+    if os.path.exists(OUTPUT_FILE):
+        with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+def save_posts(data):
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def is_new_data(old, new):
+    return json.dumps(old, sort_keys=True) != json.dumps(new, sort_keys=True)
+
+def write_log():
+    with open("last_updated.txt", "w", encoding="utf-8") as f:
+        f.write(f"Last updated at: {datetime.now().isoformat()}")
+
+# 主程式流程
+try:
+    new_posts = fetch_telegram_articles(URL)
+    old_posts = load_old_posts()
+
+    if is_new_data(old_posts, new_posts):
+        print("Detected new posts. Updating...")
+        save_posts(new_posts)
+        write_log()
     else:
-        date_str = ""
+        print("No new posts found. Skipping update.")
+        write_log()
 
-    img_div = msg.select_one(".tgme_widget_message_photo_wrap")
-    img_url = None
-    if img_div and img_div.has_attr("style"):
-        import re
-        match = re.search(r"url\('([^']+)'\)", img_div["style"])
-        if match:
-            img_url = match.group(1)
-    posts.append({
-        "date": date_str,
-        "text": text,
-        "image": img_url
-    })
-
-with open("posts.json", "w", encoding="utf-8") as f:
-    json.dump(posts, f, ensure_ascii=False, indent=2)
+except Exception as e:
+    print("❌ Crawler failed:", str(e))
+    # 若要整合通知：這裡可加上 Line Notify 或 email 警示
