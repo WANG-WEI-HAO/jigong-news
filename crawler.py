@@ -1,7 +1,7 @@
+#將 https://t.me/s/jigongnews 的內容抓下來，並存成 posts.json
 import requests
 from bs4 import BeautifulSoup
 import json
-import datetime
 
 url = "https://t.me/s/jigongnews"
 res = requests.get(url)

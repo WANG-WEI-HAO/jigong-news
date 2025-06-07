@@ -12,7 +12,7 @@
     .date { font-size: 0.9em; color: #888; }
     .text { margin-top: 0.5em; }
     img { max-width: 100%; margin-top: 1em; border-radius: 6px; }
-    .input-row { display: flex; gap: 1em; margin-bottom: 2em; align-items: center; }
+    .input-row { display: flex; gap: 1em; margin-bottom: 2em; align-items: center; flex-wrap: wrap; }
     #search, #datePicker {
       padding: 0.5em;
       width: 180px;
@@ -28,7 +28,18 @@
       border-color: #5a4fcf;
       outline: none;
     }
-    #datePicker { margin-top: 0; }
+    #loadMoreBtn {
+      display: none;
+      padding: 0.6em 1.2em;
+      font-size: 1em;
+      background: #5a4fcf;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 1em auto;
+      display: block;
+    }
     .reset-btn {
       background: none;
       border: none;
@@ -57,31 +68,66 @@
       &#x21bb;
     </button>
   </div>
-  <div id="content">
-    <!-- 爬蟲產生的內容將會被插入在這 -->
-  </div>
+
+  <div id="content"></div>
+  <button id="loadMoreBtn">顯示更多</button>
+
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script>
     let allPosts = [];
     let filteredPosts = [];
     let datePickerInstance = null;
+    let renderIndex = 0;
+    const batchSize = 10;
+
+    // 圖片網址判斷：是 http/https 就回傳原始網址；否則視為本地圖片
+    function getImageUrl(imagePath) {
+      if (!imagePath) return "";
+      // 若是完整的 http/https 網址則直接使用
+      if (/^https?:\/\//.test(imagePath)) {
+        return imagePath;
+      } else {
+        // 否則視為本地圖片，將路徑中的反斜線轉換為正斜線
+        return imagePath.replace(/\\/g, '/');
+      }
+    }
+
+    function renderBatch() {
+      const container = document.getElementById("content");
+      const postsToRender = filteredPosts.slice(renderIndex, renderIndex + batchSize);
+      postsToRender.forEach(post => {
+        const div = document.createElement("div");
+        div.className = "post";
+
+        const imgTag = post.image
+          ? `<img src="${getImageUrl(post.image)}" alt="圖片" onerror="this.style.display='none';">`
+          : "";
+
+        div.innerHTML = `
+          <div class="date">${post.date || ""}</div>
+          <div class="text">${(post.text || "").replace(/\n/g, "<br>")}</div>
+          ${imgTag}
+        `;
+        container.appendChild(div);
+      });
+
+      renderIndex += postsToRender.length;
+
+      const btn = document.getElementById("loadMoreBtn");
+      if (renderIndex >= filteredPosts.length) {
+        btn.style.display = "none";
+      } else {
+        btn.style.display = "block";
+      }
+    }
 
     function render(posts) {
       const container = document.getElementById("content");
       container.innerHTML = "";
-      posts.forEach(post => {
-        const div = document.createElement("div");
-        div.className = "post";
-        div.innerHTML = `
-          <div class="date">${post.date || ""}</div>
-          <div class="text">${(post.text || "").replace(/\n/g, "<br>")}</div>
-          ${post.image ? `<img src="${post.image}" alt="圖片">` : ""}
-        `;
-        container.appendChild(div);
-      });
+      renderIndex = 0;
+      renderBatch();
     }
 
-    // 取得所有日期（去重複）
     function getAllDates(posts) {
       return [...new Set(posts.map(post => post.date).filter(Boolean))].sort((a, b) => b.localeCompare(a));
     }
@@ -90,18 +136,16 @@
       fetch("posts.json")
         .then(res => res.json())
         .then(data => {
-          // 依日期新到舊排序
           allPosts = data.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
           filteredPosts = allPosts;
           render(filteredPosts);
 
-          // 初始化日期選擇器
           if (datePickerInstance) datePickerInstance.destroy();
           datePickerInstance = flatpickr("#datePicker", {
             dateFormat: "Y-m-d",
             disableMobile: true,
-            locale: "zh_tw",
-            onChange: function(selectedDates, dateStr) {
+            locale: "zh_tw", // 確保 flatpickr 使用中文
+            onChange: function() {
               filterAndRender();
             },
             enable: getAllDates(allPosts)
@@ -109,7 +153,6 @@
         });
     }
 
-    // 搜尋與日期篩選
     function filterAndRender() {
       const keyword = document.getElementById("search").value.trim();
       const date = document.getElementById("datePicker").value.trim();
@@ -123,15 +166,50 @@
 
     document.getElementById("search").addEventListener("input", filterAndRender);
     document.getElementById("datePicker").addEventListener("change", filterAndRender);
-
-    // 重置按鈕功能
+    document.getElementById("loadMoreBtn").addEventListener("click", renderBatch);
     document.getElementById("resetBtn").addEventListener("click", function() {
       document.getElementById("search").value = "";
       document.getElementById("datePicker").value = "";
-      filterAndRender();
+      if (datePickerInstance) {
+        datePickerInstance.clear(); // 清除 flatpickr 的選中日期
+      }
+      filterAndRender(); // 重新篩選並渲染
     });
 
-    // 頁面載入時自動載入資料
+    // 初始化 flatpickr 的中文語言包
+    if (typeof flatpickr.l10ns.zh_tw === 'undefined' && typeof flatpickr.l10ns.zh !== 'undefined') {
+        flatpickr.l10ns.zh_tw = JSON.parse(JSON.stringify(flatpickr.l10ns.zh)); // 複製中文語言包
+        flatpickr.l10ns.zh_tw.weekdays.shorthand = ["日", "一", "二", "三", "四", "五", "六"];
+        flatpickr.l10ns.zh_tw.months.shorthand = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+        flatpickr.l10ns.zh_tw.months.longhand = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+        flatpickr.l10ns.zh_tw.firstDayOfWeek = 0; // 週日為第一天
+    } else if (typeof flatpickr.l10ns.zh_tw === 'undefined') {
+        // 如果連簡體中文都沒有，提供一個基礎的繁體中文配置
+        flatpickr.l10ns.zh_tw = {
+            weekdays: {
+                shorthand: ["日", "一", "二", "三", "四", "五", "六"],
+                longhand: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]
+            },
+            months: {
+                shorthand: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"],
+                longhand: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
+            },
+            firstDayOfWeek: 0,
+            ordinal: () => "", // 繁體中文通常不使用序數詞
+            rangeSeparator: " 至 ",
+            weekAbbreviation: "週",
+            scrollTitle: "滾動切換",
+            toggleTitle: "點擊切換",
+            amPM: ["上午", "下午"],
+            yearAriaLabel: "年份",
+            monthAriaLabel: "月份",
+            hourAriaLabel: "時",
+            minuteAriaLabel: "分",
+            time_24hr: false
+        };
+    }
+
+
     fetchAndRender();
   </script>
 </body>
