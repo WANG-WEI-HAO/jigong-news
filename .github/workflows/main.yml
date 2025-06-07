@@ -27,7 +27,7 @@ jobs:
       - name: Build static page (if any)
         run: |
           # 如果你用 HTML 模板或 markdown 可產出靜態頁
-          echo "Site updated at $(date)" > docs/index.html
+          echo "Site updated at $(date)" > index.html
 
       - name: Commit and push updates
         env:
