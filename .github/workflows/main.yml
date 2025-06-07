@@ -1,4 +1,4 @@
-name: Auto Update & Deploy Pages
+name: Auto Update Posts
 
 on:
   schedule:
@@ -6,9 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  update_and_deploy:
+  update:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -24,8 +23,6 @@ jobs:
       - name: Run crawler
         run: python crawler.py
 
-      # 如果有靜態頁產生步驟，請在這裡加上
-
       - name: Commit and push updates
         env:
           GH_TOKEN: ${{ secrets.JG_TOKEN }}
@@ -33,5 +30,5 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add posts.json
-          git diff --cached --quiet || git commit -m "🔄 Auto update posts & deploy"
-          git push https://x-access-token:${GH_TOKEN}@github.com/WANG-WEI-HAO/jigong-news.git
+          git diff --cached --quiet || git commit -m "Auto update posts.json"
+          git push
