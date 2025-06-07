@@ -32,4 +32,4 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add posts.json
           git commit -m "Auto update posts.json" || echo "No changes to commit"
-          git push https://x-access-token:${GH_TOKEN}@github.com/WANG-WEI-HAO/jigong-news.git
+          git push https://x-access-token:${JG_TOKEN}@github.com/WANG-WEI-HAO/jigong-news.git
