@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 import os
 
-URL = "https://t.me/s/jigongnews/2062"
+URL = "https://t.me/s/jigongnews"
 OUTPUT_FILE = "posts.json"
 
 def fetch_telegram_articles(url):
