@@ -1,36 +1,55 @@
-name: Auto Update Posts
+name: Update Posts and Deploy to GitHub Pages
 
 on:
-  schedule:
-    - cron: '0 23 * * *'  # 每天台灣時間 07:00 執行（UTC 23:00）
-  workflow_dispatch:
+  # 1. 當有程式碼推送到 main 分支時觸發 (方便手動更新或修復後立即部署)
+  push:
+    branches:
+      - main # 請確認這是您的主要分支名稱，可能是 master
 
+  # 2. 定時觸發：每天早上 6:50 (台灣時間)
+  schedule:
+    # cron 排程時間是 UTC 時間。台灣時間 (UTC+8) 早上 6:50 等於 UTC 時間的前一天 22:50。
+    # 分 時 日 月 週
+    - cron: '50 22 * * *'
+
+# 設定 workflow 的權限，允許它寫入倉庫內容 (commit and push)
 permissions:
   contents: write
 
 jobs:
-  update:
-    runs-on: ubuntu-latest
+  update_posts_and_redeploy:
+    runs-on: ubuntu-latest # 使用最新的 Ubuntu 環境來執行任務
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      # 第 1 步：Checkout 您的倉庫程式碼
+      - name: Checkout repository
+        uses: actions/checkout@v4 # 使用官方的 checkout action
 
+      # 第 2 步：設定 Python 環境
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.10' # 您可以指定您 mess.py 使用的 Python 版本
 
+      # 第 3 步：安裝 mess.py 需要的依賴套件
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
-
-      - name: Run crawler
-        run: python crawler.py
-
-      - name: Commit and push updates
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add .
-          git diff --cached --quiet || git commit -m "Auto update posts.json"
-          git pull --rebase
-          git push
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 # mess.py 需要的套件
+
+      # 第 4 步：執行 mess.py 來更新 posts.json
+      - name: Run mess.py to update posts.json
+        run: python mess.py # 執行您的 Python 腳本
+
+      # 第 5 步：檢查 posts.json 是否有變更，若有則 commit 並 push
+      - name: Commit and push if posts.json changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Automated: Update posts.json with new articles" # Commit 的訊息
+          file_pattern: posts.json # 只檢查和 commit posts.json 這個檔案的變更
+                                   # 如果您的 mess.py 也會修改其他檔案 (例如下載圖片到 images/ 資料夾)，
+                                   # 您可能需要調整 file_pattern，例如 'posts.json images/*' 或移除此行以 commit 所有變更。
+                                   # 但根據您目前的 mess.py，它似乎只更新 posts.json 中的圖片 URL。
+          commit_user_name: "GitHub Actions Bot" # 可選，Commit 的作者名稱
+          commit_user_email: "actions@github.com" # 可選，Commit 的作者 Email
+          # push_options: '--force' # 一般不建議使用 --force，除非您明確知道其影響。
+                                    # 如果 mess.py 執行後 posts.json 沒有實際內容變更，此 action 預設不會產生新的 commit。
