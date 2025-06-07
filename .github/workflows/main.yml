@@ -1,0 +1,37 @@
+name: Auto Update & Deploy Pages
+
+on:
+  schedule:
+    - cron: '0 23 * * *'  # 每天台灣時間 07:00 執行（UTC 23:00）
+  workflow_dispatch:
+
+jobs:
+  update_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run crawler
+        run: python crawler.py
+
+      # 如果有靜態頁產生步驟，請在這裡加上
+
+      - name: Commit and push updates
+        env:
+          GH_TOKEN: ${{ secrets.JG_TOKEN }}
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add posts.json
+          git diff --cached --quiet || git commit -m "🔄 Auto update posts & deploy"
+          git push https://x-access-token:${GH_TOKEN}@github.com/WANG-WEI-HAO/jigong-news.git
