@@ -2,8 +2,11 @@ name: Auto Update Posts
 
 on:
   schedule:
-    - cron: '0 23 * * *'  # 每天台灣時間 07:00 執行（UTC 23:00）
+    - cron: '0 23 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   update:
@@ -24,8 +27,6 @@ jobs:
         run: python crawler.py
 
       - name: Commit and push updates
-        env:
-          GH_TOKEN: ${{ secrets.JG_TOKEN }}
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
