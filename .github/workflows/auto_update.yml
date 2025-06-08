@@ -13,11 +13,14 @@ on:
     - cron: '50 22 * * *'
 
 # 設定 workflow 的權限，允許它寫入倉庫內容 (commit and push)
+# 並允許它創建 GitHub Pages 部署
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
-  update_posts_and_redeploy:
+  update_posts_and_build:
     runs-on: ubuntu-latest # 使用最新的 Ubuntu 環境來執行任務
     steps:
       # 第 1 步：Checkout 您的倉庫程式碼
@@ -36,20 +39,35 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4 # mess.py 需要的套件
 
-      # 第 4 步：執行 mess.py 來更新 posts.json
+      # 第 4 步：執行 mess.py 來更新 posts.json (以及可能下載圖片到 images/)
       - name: Run mess.py to update posts.json
         run: python mess.py # 執行您的 Python 腳本
 
-      # 第 5 步：檢查 posts.json 是否有變更，若有則 commit 並 push
-      - name: Commit and push if posts.json changed
+      # 第 5 步：檢查 posts.json 和 images/ 是否有變更，若有則 commit 並 push
+      - name: Commit and push if content changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Automated: Update posts.json with new articles" # Commit 的訊息
-          file_pattern: posts.json # 只檢查和 commit posts.json 這個檔案的變更
-                                   # 如果您的 mess.py 也會修改其他檔案 (例如下載圖片到 images/ 資料夾)，
-                                   # 您可能需要調整 file_pattern，例如 'posts.json images/*' 或移除此行以 commit 所有變更。
-                                   # 但根據您目前的 mess.py，它似乎只更新 posts.json 中的圖片 URL。
+          commit_message: "Automated: Update posts.json and images with new articles" # Commit 的訊息
+          file_pattern: posts.json images/* # 檢查和 commit posts.json 以及 images 資料夾內所有檔案的變更
           commit_user_name: "GitHub Actions Bot" # 可選，Commit 的作者名稱
           commit_user_email: "actions@github.com" # 可選，Commit 的作者 Email
-          # push_options: '--force' # 一般不建議使用 --force，除非您明確知道其影響。
-                                    # 如果 mess.py 執行後 posts.json 沒有實際內容變更，此 action 預設不會產生新的 commit。
+
+      # 第 6 步：上傳 GitHub Pages 成品
+      # 假設您的 index.html, posts.json, images/ 資料夾都在倉庫根目錄
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 從倉庫根目錄上傳所有內容
+          path: '.'
+
+  # 單獨的部署 Job
+  deploy:
+    needs: update_posts_and_build # 依賴於上一個 job 完成
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }} # 部署後的網址
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
