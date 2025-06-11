@@ -2,7 +2,7 @@ name: Daily Auto Update & Deploy to GitHub Pages
 
 on:
   schedule:
-    - cron: '50 22 * * *'  # 台灣早上 6:50
+    - cron: '50 22 * * *'  # 每天台灣時間早上 6:50（UTC+8）
   push:
     branches:
       - main
@@ -27,10 +27,9 @@ jobs:
         with:
           python-version: '3.10'
 
-      # ✅ 直接安裝 requests（不使用 requirements.txt）
       - name: Install Python dependencies
         run: |
-          pip install requests
+          pip install requests beautifulsoup4
 
       - name: Run mess.py
         run: python mess.py
@@ -38,9 +37,9 @@ jobs:
       - name: Commit updated files
         run: |
           git add index.html posts.json images/
-          git commit -m "🤖 Auto-update content from mess.py" || echo "No changes to commit"
+          git commit -m "Auto-update content from mess.py" || echo "No changes to commit"
 
-      - name: Push changes
+      - name: Push changes to GitHub
         uses: ad-m/github-push-action@v0.6.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
