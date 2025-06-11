@@ -1,75 +1,49 @@
 name: Update Posts and Deploy to GitHub Pages
 
 on:
-  # 1. 當 main 分支有推送時觸發（手動更新或修正後部署）
+  # 1. 當有程式碼推送到 main 分支時觸發（你手動更新內容的情況）
   push:
     branches:
       - main
 
-  # 2. 定時觸發：每天台灣時間早上 6:50（UTC 時間為 22:50）
+  # 2. 每天早上 6:50（台灣時間）自動更新（UTC = -8）
   schedule:
-    - cron: '50 22 * * *'
-
-# 設定權限：允許 workflow 寫入內容並部署 GitHub Pages
-permissions:
-  contents: write
-  pages: write
-  id-token: write
+    - cron: '50 22 * * *'  # 每天 UTC 時間 22:50 = 台灣 6:50 AM
 
 jobs:
-  update_posts_and_build:
+  update_and_deploy:
     runs-on: ubuntu-latest
+
     steps:
-      # 步驟 1：下載 repository 內容
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # 步驟 2：設定 Python 環境
-      - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/checkout@v3
         with:
-          python-version: '3.10'
+          persist-credentials: false
 
-      # 步驟 3：安裝依賴套件
-      - name: Install dependencies
+      - name: Set up Git config
         run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      # 步驟 4：執行 Python 腳本更新資料
-      - name: Run mess.py to update posts.json
-        run: python mess.py
+      # 🔄 改為非 rebase 的方式進行 pull，避免錯誤 128
+      - name: Pull latest changes (no rebase)
+        run: git pull origin main
 
-      # 步驟 4.5：先將變更加入 staging 區（避免 pull 衝突）
-      - name: Stage changes before pulling
-        run: git add posts.json images/
+      # 🧠 在此區塊加入你的內容更新腳本，如更新 JSON、網站內容等
+      - name: Run update script
+        run: |
+          echo "Put your content update commands here"
+          # 例如：python generate_sitemap.py 或 node build.js
 
-      # 步驟 4.6：拉取遠端最新 main 並 rebase（避免 push 被拒）
-      - name: Pull latest changes to avoid push conflict
-        run: git pull origin main --rebase
+      # ✅ 自動 commit 若有變更
+      - name: Commit changes
+        run: |
+          git add .
+          git commit -m "Auto-update content" || echo "No changes to commit"
 
-      # 步驟 5：自動 commit 並 push（若有變更）
-      - name: Commit and push if content changed
-        uses: stefanzweifel/git-auto-commit-action@v5
+      # 🚀 推送回 GitHub
+      - name: Push changes to GitHub
+        uses: ad-m/github-push-action@v0.6.0
         with:
-          commit_message: "Automated: Update posts.json and images with new articles"
-          file_pattern: posts.json images/*
-          commit_user_name: "GitHub Actions Bot"
-          commit_user_email: "actions@github.com"
-
-      # 步驟 6：上傳產出檔案以供 GitHub Pages 使用
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-  deploy:
-    needs: update_posts_and_build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
