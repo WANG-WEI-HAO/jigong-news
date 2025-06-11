@@ -18,9 +18,9 @@ permissions:
 
 jobs:
   update_posts_and_build:
-    runs-on: ubuntu-latest # 使用最新 Ubuntu 環境
+    runs-on: ubuntu-latest
     steps:
-      # 步驟 1：下載目前 repository 的內容
+      # 步驟 1：下載 repository 內容
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -28,23 +28,27 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10' # 根據你使用的 Python 版本
+          python-version: '3.10'
 
-      # 步驟 3：安裝 mess.py 所需的依賴套件
+      # 步驟 3：安裝依賴套件
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4
 
-      # 步驟 4：執行 mess.py，更新 posts.json 並下載圖片
+      # 步驟 4：執行 Python 腳本更新資料
       - name: Run mess.py to update posts.json
         run: python mess.py
 
-      # ✅ 新增步驟 4.5：先拉取遠端最新版本，避免 push 時發生衝突
+      # 步驟 4.5：先將變更加入 staging 區（避免 pull 衝突）
+      - name: Stage changes before pulling
+        run: git add posts.json images/
+
+      # 步驟 4.6：拉取遠端最新 main 並 rebase（避免 push 被拒）
       - name: Pull latest changes to avoid push conflict
         run: git pull origin main --rebase
 
-      # 步驟 5：自動 commit 更新的內容（若有變更）
+      # 步驟 5：自動 commit 並 push（若有變更）
       - name: Commit and push if content changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
@@ -53,19 +57,18 @@ jobs:
           commit_user_name: "GitHub Actions Bot"
           commit_user_email: "actions@github.com"
 
-      # 步驟 6：上傳網站內容供 GitHub Pages 使用
+      # 步驟 6：上傳產出檔案以供 GitHub Pages 使用
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.' # 上傳根目錄的所有內容（index.html、posts.json、images 資料夾等）
+          path: '.'
 
-  # 第二個 job：執行部署到 GitHub Pages
   deploy:
-    needs: update_posts_and_build # 需等上一個 job 結束後再執行
+    needs: update_posts_and_build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }} # 回傳部署完成後的網址
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
