@@ -1,14 +1,14 @@
-name: Update Posts and Deploy to GitHub Pages
+name: Daily Auto Update & Deploy to GitHub Pages
 
 on:
-  # ✅ 當 main 分支有推送時自動執行（手動更新）
+  # ✅ 每天台灣早上 6:50 執行
+  schedule:
+    - cron: '50 22 * * *'  # UTC+0 時區 → 台灣時間 +8hr
+
+  # ✅ 你自己手動 push 到 main 時，也會自動執行
   push:
     branches:
       - main
-
-  # ✅ 每天早上 6:50（台灣時間 UTC+8 = UTC 22:50）自動執行
-  schedule:
-    - cron: '50 22 * * *'
 
 jobs:
   update_and_deploy:
@@ -21,34 +21,32 @@ jobs:
         with:
           persist-credentials: false
 
-      # 2️⃣ 設定 Git 使用者資訊（讓 commit 成功）
+      # 2️⃣ 設定 Git 使用者資訊
       - name: Set up Git config
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      # 3️⃣ 拉取最新變更（不使用 rebase，避免衝突）
-      - name: Pull latest changes (no rebase)
-        run: git pull origin main
+      # 3️⃣ 安裝 Python（若未內建）
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'  # 你也可以改成 3.11 等
 
-      # 4️⃣ 執行更新內容的腳本（你可以自行放入產生 sitemap、build 靜態頁面等）
-      - name: Run update script
+      # 4️⃣ 安裝套件並執行你的 mess.py
+      - name: Run mess.py
         run: |
-          echo "🔄 Running your update scripts here..."
-          # python generate_sitemap.py
-          # npm run build
-          # hugo --minify
-          # Rscript update_data.R
-          # 可以依你的專案加上實際命令
+          pip install -r requirements.txt || true  # 如果你有 requirements.txt
+          python mess.py
 
-      # 5️⃣ 自動 commit（如有變更）
-      - name: Commit changes
+      # 5️⃣ 將 index.html、posts.json、images/ 加入 Git 並提交
+      - name: Commit updated files
         run: |
-          git add .
-          git commit -m "🤖 Auto-update content from GitHub Actions" || echo "No changes to commit"
+          git add index.html posts.json images/
+          git commit -m "🤖 Daily auto-update by mess.py" || echo "No changes to commit"
 
-      # 6️⃣ 自動推送至 GitHub（可觸發 GitHub Pages 部署）
-      - name: Push changes to GitHub
+      # 6️⃣ 自動推送更新到 main 分支，觸發 GitHub Pages 部署
+      - name: Push changes
         uses: ad-m/github-push-action@v0.6.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
