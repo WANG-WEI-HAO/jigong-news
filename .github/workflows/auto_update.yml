@@ -1,19 +1,16 @@
 name: Update Posts and Deploy to GitHub Pages
 
 on:
-  # 1. 當有程式碼推送到 main 分支時觸發 (方便手動更新或修復後立即部署)
+  # 1. 當 main 分支有推送時觸發（手動更新或修正後部署）
   push:
     branches:
-      - main # 請確認這是您的主要分支名稱，可能是 master
+      - main
 
-  # 2. 定時觸發：每天早上 6:50 (台灣時間)
+  # 2. 定時觸發：每天台灣時間早上 6:50（UTC 時間為 22:50）
   schedule:
-    # cron 排程時間是 UTC 時間。台灣時間 (UTC+8) 早上 6:50 等於 UTC 時間的前一天 22:50。
-    # 分 時 日 月 週
     - cron: '50 22 * * *'
 
-# 設定 workflow 的權限，允許它寫入倉庫內容 (commit and push)
-# 並允許它創建 GitHub Pages 部署
+# 設定權限：允許 workflow 寫入內容並部署 GitHub Pages
 permissions:
   contents: write
   pages: write
@@ -21,52 +18,54 @@ permissions:
 
 jobs:
   update_posts_and_build:
-    runs-on: ubuntu-latest # 使用最新的 Ubuntu 環境來執行任務
+    runs-on: ubuntu-latest # 使用最新 Ubuntu 環境
     steps:
-      # 第 1 步：Checkout 您的倉庫程式碼
+      # 步驟 1：下載目前 repository 的內容
       - name: Checkout repository
-        uses: actions/checkout@v4 # 使用官方的 checkout action
+        uses: actions/checkout@v4
 
-      # 第 2 步：設定 Python 環境
+      # 步驟 2：設定 Python 環境
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10' # 您可以指定您 mess.py 使用的 Python 版本
+          python-version: '3.10' # 根據你使用的 Python 版本
 
-      # 第 3 步：安裝 mess.py 需要的依賴套件
+      # 步驟 3：安裝 mess.py 所需的依賴套件
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 # mess.py 需要的套件
+          pip install requests beautifulsoup4
 
-      # 第 4 步：執行 mess.py 來更新 posts.json (以及可能下載圖片到 images/)
+      # 步驟 4：執行 mess.py，更新 posts.json 並下載圖片
       - name: Run mess.py to update posts.json
-        run: python mess.py # 執行您的 Python 腳本
+        run: python mess.py
 
-      # 第 5 步：檢查 posts.json 和 images/ 是否有變更，若有則 commit 並 push
+      # ✅ 新增步驟 4.5：先拉取遠端最新版本，避免 push 時發生衝突
+      - name: Pull latest changes to avoid push conflict
+        run: git pull origin main --rebase
+
+      # 步驟 5：自動 commit 更新的內容（若有變更）
       - name: Commit and push if content changed
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Automated: Update posts.json and images with new articles" # Commit 的訊息
-          file_pattern: posts.json images/* # 檢查和 commit posts.json 以及 images 資料夾內所有檔案的變更
-          commit_user_name: "GitHub Actions Bot" # 可選，Commit 的作者名稱
-          commit_user_email: "actions@github.com" # 可選，Commit 的作者 Email
+          commit_message: "Automated: Update posts.json and images with new articles"
+          file_pattern: posts.json images/*
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "actions@github.com"
 
-      # 第 6 步：上傳 GitHub Pages 成品
-      # 假設您的 index.html, posts.json, images/ 資料夾都在倉庫根目錄
+      # 步驟 6：上傳網站內容供 GitHub Pages 使用
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # 從倉庫根目錄上傳所有內容
-          path: '.'
+          path: '.' # 上傳根目錄的所有內容（index.html、posts.json、images 資料夾等）
 
-  # 單獨的部署 Job
+  # 第二個 job：執行部署到 GitHub Pages
   deploy:
-    needs: update_posts_and_build # 依賴於上一個 job 完成
+    needs: update_posts_and_build # 需等上一個 job 結束後再執行
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }} # 部署後的網址
+      url: ${{ steps.deployment.outputs.page_url }} # 回傳部署完成後的網址
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
