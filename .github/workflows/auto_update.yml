@@ -1,47 +1,53 @@
 name: Update Posts and Deploy to GitHub Pages
 
 on:
-  # 1. 當有程式碼推送到 main 分支時觸發（你手動更新內容的情況）
+  # ✅ 當 main 分支有推送時自動執行（手動更新）
   push:
     branches:
       - main
 
-  # 2. 每天早上 6:50（台灣時間）自動更新（UTC = -8）
+  # ✅ 每天早上 6:50（台灣時間 UTC+8 = UTC 22:50）自動執行
   schedule:
-    - cron: '50 22 * * *'  # 每天 UTC 時間 22:50 = 台灣 6:50 AM
+    - cron: '50 22 * * *'
 
 jobs:
   update_and_deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ 取出 repo 原始碼
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           persist-credentials: false
 
+      # 2️⃣ 設定 Git 使用者資訊（讓 commit 成功）
       - name: Set up Git config
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      # 🔄 改為非 rebase 的方式進行 pull，避免錯誤 128
+      # 3️⃣ 拉取最新變更（不使用 rebase，避免衝突）
       - name: Pull latest changes (no rebase)
         run: git pull origin main
 
-      # 🧠 在此區塊加入你的內容更新腳本，如更新 JSON、網站內容等
+      # 4️⃣ 執行更新內容的腳本（你可以自行放入產生 sitemap、build 靜態頁面等）
       - name: Run update script
         run: |
-          echo "Put your content update commands here"
-          # 例如：python generate_sitemap.py 或 node build.js
+          echo "🔄 Running your update scripts here..."
+          # python generate_sitemap.py
+          # npm run build
+          # hugo --minify
+          # Rscript update_data.R
+          # 可以依你的專案加上實際命令
 
-      # ✅ 自動 commit 若有變更
+      # 5️⃣ 自動 commit（如有變更）
       - name: Commit changes
         run: |
           git add .
-          git commit -m "Auto-update content" || echo "No changes to commit"
+          git commit -m "🤖 Auto-update content from GitHub Actions" || echo "No changes to commit"
 
-      # 🚀 推送回 GitHub
+      # 6️⃣ 自動推送至 GitHub（可觸發 GitHub Pages 部署）
       - name: Push changes to GitHub
         uses: ad-m/github-push-action@v0.6.0
         with:
