@@ -300,28 +300,45 @@
 
     function generateShareButtons(imageUrl, postText = "") {
         const container = document.getElementById('shareButtonsContainer'); if (!container) return; container.innerHTML = ''; 
-        const encodedImageUrl = encodeURIComponent(imageUrl);
+        
+        const siteToShareUrl = "https://sites.google.com/view/fycd-tc/%E6%BF%9F%E5%85%AC%E5%A0%B1";
+        const encodedSiteToShareUrl = encodeURIComponent(siteToShareUrl);
+        // imageUrl (原始圖片直接連結) 仍可供其他潛在用途，
+        // 但主要的分享連結將是 siteToShareUrl。
+        // Facebook 等平台會嘗試從 siteToShareUrl 抓取預覽圖片 (透過 Open Graph meta tags)。
+
         const shareTextContent = postText ? postText.substring(0, 100) + (postText.length > 100 ? "..." : "") : document.title;
-        const lineShareText = encodeURIComponent(`${shareTextContent}\n${imageUrl}`);
+        const lineShareText = encodeURIComponent(`${shareTextContent}\n${siteToShareUrl}`); // Line 分享訊息中包含網站連結
         const shares = [
-            { name: 'Facebook', url: `https://www.facebook.com/sharer/sharer.php?u=${encodedImageUrl}`, icon: '📘' },
-            { name: 'Instagram', url: `https://www.instagram.com/`, icon: '📸', title: '在 Instagram 打開 (需手動上傳圖片)' },
+            // 移除了原本透過 <a> 標籤的 Facebook 按鈕，保留使用 window.open 的版本以求一致性。
+            {
+                name: 'Facebook',
+                action: (event) => {
+                    event.stopPropagation();
+                    showShareButtons();
+                    const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedSiteToShareUrl}`; // 分享 Google Sites 頁面連結
+                    window.open(fbShareUrl, '_blank', 'noopener,noreferrer');
+                },
+                icon: '📘'
+            },
+            {
+                name: 'Instagram',
+                action: (event) => {
+                    event.stopPropagation();
+                    showShareButtons();
+                    window.open(`https://www.instagram.com/`, '_blank', 'noopener,noreferrer');
+                },
+                icon: '📸', title: '在 Instagram 打開 (需手動上傳圖片)'
+            },
             { name: 'Line', action: (event) => { event.stopPropagation(); showShareButtons(); window.open(`line://msg/text/?${lineShareText}`, '_blank'); }, icon: '📱' },
             { name: '複製連結', action: (event) => { event.stopPropagation(); showShareButtons();
-                console.log("Attempting to copy link (share button):", imageUrl);
-                navigator.clipboard.writeText(imageUrl).then(() => {
-                    console.log("Link copied successfully (share button)!");
-                    const btn = event.currentTarget; const originalText = btn.innerHTML;
-                    btn.innerHTML = '✅ 已複製'; setTimeout(() => { btn.innerHTML = originalText; }, 1500);
-                }).catch(err => { 
-                    console.error('無法複製連結 (share button): ', err);
-                    alert('複製連結失敗。'); 
-                }); }, icon: '🔗'
+                console.log("Attempting to copy link (share button):", siteToShareUrl); // 複製 Google Sites 頁面連結
+                navigator.clipboard.writeText(siteToShareUrl).then(() => { console.log("Link copied successfully (share button)!"); const btn = event.currentTarget; const originalText = btn.innerHTML; btn.innerHTML = '✅ 已複製'; setTimeout(() => { btn.innerHTML = originalText; }, 1500); }).catch(err => { console.error('無法複製連結 (share button): ', err); alert('複製連結失敗。'); }); }, icon: '🔗'
             }
         ];
         shares.forEach(share => {
             const element = share.url && !share.action ? document.createElement('a') : document.createElement('button');
-            element.innerHTML = `${share.icon} ${share.name}`; element.title = share.title || `分享到 ${share.name}`;
+            element.innerHTML = `${share.icon} ${share.name}`; element.title = share.title || (share.name === '複製連結' ? '複製網站連結' : `分享到 ${share.name}`);
             if (share.className) element.classList.add(share.className);
             if (share.url && !share.action) {
                 element.href = share.url; element.target = '_blank'; element.rel = 'noopener noreferrer';
