@@ -5,22 +5,33 @@
   <title>濟公報(每日7:00更新)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXBDP8HVEC"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
 
-  gtag('config', 'G-XXBDP8HVEC');
-</script>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4EBM386ZCS"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-4EBM386ZCS');
+  </script>
+
   <style>
-    body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; }
+    body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; transition: background 0.3s, color 0.3s; }
     h1 { color: #5a4fcf; }
     .post { background: white; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .date { font-size: 0.9em; color: #888; }
     .text { margin-top: 0.5em; }
-    img { max-width: 100%; margin-top: 1em; border-radius: 6px; }
+    .text[data-copyable] {
+        cursor: pointer;
+    }
+    .text[data-copyable]:hover {
+      background-color: #f0f0f0;
+    }
+    body.dark-mode .text[data-copyable]:hover {
+      background-color: #3a3a3a;
+    }
+
+    img { max-width: 100%; margin-top: 1em; border-radius: 6px; cursor: zoom-in; }
     .input-row { display: flex; gap: 1em; margin-bottom: 2em; align-items: center; flex-wrap: wrap; }
     #search, #datePicker {
       padding: 0.5em;
@@ -47,7 +58,6 @@
       border-radius: 5px;
       cursor: pointer;
       margin: 1em auto;
-      display: block;
     }
     .reset-btn {
       background: none;
@@ -59,167 +69,531 @@
       border-radius: 4px;
       transition: background 0.2s;
     }
-    .reset-btn:hover {
-      background: #ecebfa;
+    .reset-btn:hover { background: #ecebfa; }
+
+    body.dark-mode { background: #1e1e1e; color: #f0f0f0; }
+    body.dark-mode .post { background: #2c2c2c; box-shadow: 0 2px 5px rgba(255,255,255,0.05); }
+    body.dark-mode .date { color: #bbb; }
+    body.dark-mode input, body.dark-mode #search, body.dark-mode #datePicker {
+      background: #333; color: white; border-color: #555;
     }
+    body.dark-mode #loadMoreBtn { background: #444; }
+    body.dark-mode .reset-btn { color: #aaa; }
+    body.dark-mode .reset-btn:hover { background: #333; }
+
+    #imageModal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      justify-content: center;
+      align-items: center;
+    }
+    #imageModal img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 10px;
+      box-shadow: 0 0 20px black;
+      cursor: zoom-out;
+    }
+
+    #shareButtonsContainer {
+      position: absolute;
+      bottom: 25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(30, 30, 30, 0.85);
+      padding: 10px 15px;
+      border-radius: 8px;
+      display: flex; /* Start with flex for JS to control opacity/visibility */
+      gap: 12px;
+      z-index: 10000;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      opacity: 0; /* Initially hidden via opacity */
+      visibility: hidden; /* Initially hidden */
+      transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    }
+    #shareButtonsContainer.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+
+
+    #shareButtonsContainer button,
+    #shareButtonsContainer a {
+      background-color: #f0f0f0;
+      color: #333;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.9em;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    #shareButtonsContainer button:hover,
+    #shareButtonsContainer a:hover {
+      background-color: #ddd;
+    }
+    #shareButtonsContainer button:active,
+    #shareButtonsContainer a:active {
+      transform: scale(0.95);
+    }
+
+
+    #todayBtn {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 999;
+      padding: 0.8em 1.2em;
+      font-size: 1em;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
     @media (max-width: 700px) {
       .input-row { flex-direction: column; gap: 0.5em; }
       #search, #datePicker { width: 100%; }
+      #shareButtonsContainer {
+        bottom: 15px;
+        padding: 8px 10px;
+        gap: 8px;
+      }
+      #shareButtonsContainer button,
+      #shareButtonsContainer a {
+        padding: 6px 10px;
+        font-size: 0.8em;
+      }
     }
   </style>
-   <!-- HTML 中繼標記 -->
-  <meta name="google-site-verification" content="yco_VcIMMxtCHHfWr7Hs760MJ_wUlJiIm8AWYUErBr4" />
 </head>
 <body>
   <h1>濟公報(每日7:00更新)</h1>
+
+  <button id="todayBtn" title="今日貼文">今日貼文</button>
+  <button id="themeToggle" style="background: none; border: none; font-size: 1.5em; cursor: pointer; position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 999;">🌙</button>
+
   <div class="input-row">
     <input id="search" type="text" placeholder="搜尋內容..." />
     <input id="datePicker" type="text" placeholder="選擇日期..." readonly />
-    <button id="resetBtn" class="reset-btn" title="重置搜尋與日期" aria-label="重置">
-      &#x21bb;
-    </button>
+    <button id="resetBtn" class="reset-btn">↻</button>
   </div>
 
   <div id="content"></div>
   <button id="loadMoreBtn">顯示更多</button>
 
+  <div id="imageModal">
+    <img src="" alt="放大圖片" id="modalImage">
+    <div id="shareButtonsContainer">
+      <!-- Share buttons will be generated here by JS -->
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
+ <script>
     let allPosts = [];
     let filteredPosts = [];
     let datePickerInstance = null;
     let renderIndex = 0;
     const batchSize = 10;
+    let shareButtonsTimeout = null; // Timeout for hiding share buttons
+    const shareButtonHideDelay = 2000; // 2 seconds
 
-    // 圖片網址判斷：是 http/https 就回傳原始網址；否則視為本地圖片
     function getImageUrl(imagePath) {
       if (!imagePath) return "";
-      // 若是完整的 http/https 網址則直接使用
       if (/^https?:\/\//.test(imagePath)) {
         return imagePath;
-      } else {
-        // 否則視為本地圖片，將路徑中的反斜線轉換為正斜線
-        return imagePath.replace(/\\/g, '/');
       }
+      return imagePath.replace(/\\/g, '/');
+    }
+
+    function showCopyFeedback(element, message, isError = false, originalHTML) {
+        const originalTitle = element.getAttribute('title');
+        const originalCursor = element.style.cursor;
+        const originalDataCopyable = element.hasAttribute('data-copyable');
+
+        element.textContent = message;
+        element.style.color = isError ? 'red' : (document.body.classList.contains('dark-mode') ? '#a5d6a7' : '#2e7d32');
+        element.style.fontWeight = 'bold';
+        element.style.cursor = 'default';
+        if(originalDataCopyable) element.removeAttribute('data-copyable');
+        element.removeAttribute('title');
+
+        setTimeout(() => {
+            element.innerHTML = originalHTML;
+            element.style.color = '';
+            element.style.fontWeight = '';
+            element.style.cursor = originalCursor;
+            if(originalDataCopyable) element.setAttribute('data-copyable', '');
+            if(originalTitle) element.setAttribute('title', originalTitle);
+        }, 1500);
+    }
+
+    async function copyTextToClipboard(textToCopy, elementForFeedback, originalDisplayHTML) {
+        if (!textToCopy) return;
+
+        if (!navigator.clipboard) {
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed"; 
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showCopyFeedback(elementForFeedback, "已複製！", false, originalDisplayHTML);
+            } catch (err) {
+                console.error('Fallback: 無法複製文字', err);
+                showCopyFeedback(elementForFeedback, "複製失敗", true, originalDisplayHTML);
+            }
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            showCopyFeedback(elementForFeedback, "已複製！", false, originalDisplayHTML);
+        } catch (err) {
+            console.error('Async: 無法複製文字: ', err);
+            showCopyFeedback(elementForFeedback, "複製失敗", true, originalDisplayHTML);
+        }
     }
 
     function renderBatch() {
       const container = document.getElementById("content");
       const postsToRender = filteredPosts.slice(renderIndex, renderIndex + batchSize);
+
       postsToRender.forEach(post => {
         const div = document.createElement("div");
         div.className = "post";
-
-        const imgTag = post.image
-          ? `<img src="${getImageUrl(post.image)}" alt="圖片" onerror="this.style.display='none';">`
-          : "";
+        const imgTag = post.image ? `<img src="${getImageUrl(post.image)}" alt="圖片" onerror="this.style.display='none';">` : "";
+        
+        const originalTextForCopy = post.text || ""; 
+        const displayTextForRender = originalTextForCopy.replace(/\n/g, "<br>");
 
         div.innerHTML = `
           <div class="date">${post.date || ""}</div>
-          <div class="text">${(post.text || "").replace(/\n/g, "<br>")}</div>
+          <div class="text"></div>
           ${imgTag}
         `;
+        
+        const textElement = div.querySelector('.text');
+        if (textElement) {
+            textElement.innerHTML = displayTextForRender;
+
+            if (originalTextForCopy.trim() !== "") {
+                textElement.setAttribute('data-copyable', '');
+                textElement.setAttribute('title', '點擊複製內文');
+
+                textElement.addEventListener('click', (event) => {
+                    if (event.target.tagName === 'IMG') { 
+                        return; 
+                    }
+                    copyTextToClipboard(originalTextForCopy, textElement, displayTextForRender); 
+                });
+            }
+        }
         container.appendChild(div);
       });
 
       renderIndex += postsToRender.length;
-
-      const btn = document.getElementById("loadMoreBtn");
-      if (renderIndex >= filteredPosts.length) {
-        btn.style.display = "none";
-      } else {
-        btn.style.display = "block";
-      }
+      document.getElementById("loadMoreBtn").style.display = renderIndex >= filteredPosts.length ? "none" : "block";
     }
 
     function render(posts) {
-      const container = document.getElementById("content");
-      container.innerHTML = "";
+      document.getElementById("content").innerHTML = "";
       renderIndex = 0;
       renderBatch();
     }
-
+    
     function getAllDates(posts) {
       return [...new Set(posts.map(post => post.date).filter(Boolean))].sort((a, b) => b.localeCompare(a));
     }
 
     function fetchAndRender() {
       fetch("posts.json")
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        })
         .then(data => {
           allPosts = data.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
           filteredPosts = allPosts;
           render(filteredPosts);
 
-          if (datePickerInstance) datePickerInstance.destroy();
+          if (datePickerInstance) {
+            datePickerInstance.destroy();
+          }
           datePickerInstance = flatpickr("#datePicker", {
             dateFormat: "Y-m-d",
             disableMobile: true,
-            locale: "zh_tw", // 確保 flatpickr 使用中文
-            onChange: function() {
+            locale: "zh_tw",
+            onChange: function(selectedDates, dateStr, instance) {
               filterAndRender();
             },
             enable: getAllDates(allPosts)
           });
+        })
+        .catch(error => {
+          console.error("Error fetching or processing posts:", error);
+          document.getElementById("content").innerHTML = "<p>無法載入文章，請稍後再試。</p>";
         });
     }
 
     function filterAndRender() {
-      const keyword = document.getElementById("search").value.trim();
+      const keywordInput = document.getElementById("search").value.trim().toLowerCase();
+      const keywords = keywordInput.split(/\s+/).filter(Boolean);
       const date = document.getElementById("datePicker").value.trim();
+
       filteredPosts = allPosts.filter(post => {
-        const matchText = !keyword || (post.text || "").includes(keyword) || (post.date || "").includes(keyword);
-        const matchDate = !date || post.date === date;
+        const postText = (post.text || "").toLowerCase();
+        const postDate = (post.date || "");
+        
+        const matchText = keywords.length === 0 || keywords.every(kw => postText.includes(kw));
+        const matchDate = !date || postDate === date;
+
         return matchText && matchDate;
       });
       render(filteredPosts);
     }
 
     document.getElementById("search").addEventListener("input", filterAndRender);
-    document.getElementById("datePicker").addEventListener("change", filterAndRender);
     document.getElementById("loadMoreBtn").addEventListener("click", renderBatch);
     document.getElementById("resetBtn").addEventListener("click", function() {
       document.getElementById("search").value = "";
       document.getElementById("datePicker").value = "";
       if (datePickerInstance) {
-        datePickerInstance.clear(); // 清除 flatpickr 的選中日期
+        datePickerInstance.clear();
       }
-      filterAndRender(); // 重新篩選並渲染
+      filterAndRender();
     });
 
-    // 初始化 flatpickr 的中文語言包
-    if (typeof flatpickr.l10ns.zh_tw === 'undefined' && typeof flatpickr.l10ns.zh !== 'undefined') {
-        flatpickr.l10ns.zh_tw = JSON.parse(JSON.stringify(flatpickr.l10ns.zh)); // 複製中文語言包
-        flatpickr.l10ns.zh_tw.weekdays.shorthand = ["日", "一", "二", "三", "四", "五", "六"];
-        flatpickr.l10ns.zh_tw.months.shorthand = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
-        flatpickr.l10ns.zh_tw.months.longhand = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
-        flatpickr.l10ns.zh_tw.firstDayOfWeek = 0; // 週日為第一天
-    } else if (typeof flatpickr.l10ns.zh_tw === 'undefined') {
-        // 如果連簡體中文都沒有，提供一個基礎的繁體中文配置
-        flatpickr.l10ns.zh_tw = {
-            weekdays: {
-                shorthand: ["日", "一", "二", "三", "四", "五", "六"],
-                longhand: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]
-            },
-            months: {
-                shorthand: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"],
-                longhand: ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"]
-            },
-            firstDayOfWeek: 0,
-            ordinal: () => "", // 繁體中文通常不使用序數詞
-            rangeSeparator: " 至 ",
-            weekAbbreviation: "週",
-            scrollTitle: "滾動切換",
-            toggleTitle: "點擊切換",
-            amPM: ["上午", "下午"],
-            yearAriaLabel: "年份",
-            monthAriaLabel: "月份",
-            hourAriaLabel: "時",
-            minuteAriaLabel: "分",
-            time_24hr: false
-        };
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      const today = new Date();
+      const offset = today.getTimezoneOffset() * 60000;
+      const localISO = new Date(today - offset).toISOString().slice(0, 10);
+      
+      document.getElementById("datePicker").value = localISO;
+      if (datePickerInstance) {
+        datePickerInstance.setDate(localISO, true);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    const themeToggle = document.getElementById("themeToggle");
+    const storedTheme = localStorage.getItem("theme");
+    if (storedTheme === "dark") {
+      document.body.classList.add("dark-mode");
+      themeToggle.textContent = "☀";
+    } else {
+      themeToggle.textContent = "🌙";
+    }
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark-mode");
+      const isDark = document.body.classList.contains("dark-mode");
+      localStorage.setItem("theme", isDark ? "dark" : "light");
+      themeToggle.textContent = isDark ? "☀" : "🌙";
+    });
+
+    let imageList = [];
+    let currentImageIndex = -1;
+
+    function updateImageList() {
+        imageList = Array.from(document.querySelectorAll(".post img")).map(img => img.src);
     }
 
+    function showShareButtons() {
+        const container = document.getElementById('shareButtonsContainer');
+        if (container) {
+            container.classList.add('visible');
+            clearTimeout(shareButtonsTimeout); // Clear any existing timeout
+            shareButtonsTimeout = setTimeout(hideShareButtons, shareButtonHideDelay);
+        }
+    }
+
+    function hideShareButtons() {
+        const container = document.getElementById('shareButtonsContainer');
+        if (container) {
+            container.classList.remove('visible');
+        }
+    }
+
+    function generateShareButtons(imageUrl, postText = "") {
+        const container = document.getElementById('shareButtonsContainer');
+        if (!container) return;
+        container.innerHTML = ''; 
+
+        const encodedImageUrl = encodeURIComponent(imageUrl);
+        const shareTextContent = postText ? postText.substring(0, 100) + (postText.length > 100 ? "..." : "") : document.title;
+        // const encodedShareText = encodeURIComponent(shareTextContent); // Not directly used for IG
+
+        const shares = [
+            { name: 'Facebook', url: `https://www.facebook.com/sharer/sharer.php?u=${encodedImageUrl}`, icon: '📘' },
+            { 
+                name: 'Instagram', 
+                // Instagram does not have a direct web share API for pre-filling images.
+                // This link will open Instagram. Users need to manually post.
+                // Could also try instagram://app but that's mobile specific and might not work universally.
+                url: `https://www.instagram.com/`, 
+                icon: '📸',
+                title: '在 Instagram 打開 (需手動上傳圖片)'
+            },
+            { name: 'Line', url: `https://social-plugins.line.me/lineit/share?url=${encodedImageUrl}&text=${encodeURIComponent(shareTextContent)}`, icon: '📱' },
+            {
+                name: '複製連結',
+                action: (event) => {
+                    event.stopPropagation(); 
+                    showShareButtons(); // Keep buttons visible if one is interacted with
+                    navigator.clipboard.writeText(imageUrl).then(() => {
+                        const btn = event.currentTarget;
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '✅ 已複製';
+                        setTimeout(() => { btn.innerHTML = originalText; }, 1500);
+                    }).catch(err => {
+                        console.error('無法複製連結: ', err);
+                        alert('複製連結失敗。');
+                    });
+                },
+                icon: '🔗'
+            }
+        ];
+
+        shares.forEach(share => {
+            const element = share.url ? document.createElement('a') : document.createElement('button');
+            element.innerHTML = `${share.icon} ${share.name}`;
+            element.title = share.title || `分享到 ${share.name}`; // Use custom title if provided
+            if (share.className) element.classList.add(share.className);
+
+            if (share.url) {
+                element.href = share.url;
+                element.target = '_blank';
+                element.rel = 'noopener noreferrer';
+                element.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showShareButtons(); // Keep buttons visible if one is interacted with
+                }); 
+            } else if (share.action) {
+                element.addEventListener('click', share.action); // Action should handle stopPropagation and showShareButtons if needed
+            }
+            container.appendChild(element);
+        });
+        showShareButtons(); // Initially show buttons and start timer
+    }
+    
+    function showModal(clickedImgSrc) {
+        updateImageList();
+        const index = imageList.indexOf(clickedImgSrc);
+        if (index === -1) return;
+
+        currentImageIndex = index;
+        const modal = document.getElementById("imageModal");
+        const modalImg = document.getElementById("modalImage");
+        modalImg.src = imageList[currentImageIndex]; 
+        
+        modal.style.display = "flex";
+        document.body.style.overflow = 'hidden';
+
+        let postTextForShare = "";
+        const originalPost = filteredPosts.find(p => getImageUrl(p.image) === modalImg.src);
+        if (originalPost && originalPost.text) {
+            postTextForShare = originalPost.text;
+        } else {
+            const imgElement = document.querySelector(`.post img[src="${clickedImgSrc}"]`);
+            if (imgElement) {
+                const postElement = imgElement.closest('.post');
+                if (postElement) {
+                    const textDiv = postElement.querySelector('.text');
+                    if (textDiv) postTextForShare = textDiv.innerText;
+                }
+            }
+        }
+        generateShareButtons(modalImg.src, postTextForShare);
+    }
+
+    function hideModal() {
+        const modal = document.getElementById("imageModal");
+        modal.style.display = "none";
+        document.body.style.overflow = 'auto';
+        currentImageIndex = -1;
+        clearTimeout(shareButtonsTimeout); // Clear timeout when modal closes
+        hideShareButtons(); // Ensure buttons are hidden
+    }
+    
+    function navigateModalImage(direction) {
+        if (currentImageIndex === -1 || imageList.length === 0) return;
+        
+        currentImageIndex += direction;
+        
+        if (currentImageIndex < 0) {
+            currentImageIndex = imageList.length - 1; 
+        } else if (currentImageIndex >= imageList.length) {
+            currentImageIndex = 0; 
+        }
+        const newImgSrc = imageList[currentImageIndex];
+        document.getElementById("modalImage").src = newImgSrc;
+        
+        let postTextForShare = "";
+        const originalPost = filteredPosts.find(p => getImageUrl(p.image) === newImgSrc);
+        if (originalPost && originalPost.text) {
+            postTextForShare = originalPost.text;
+        }
+        generateShareButtons(newImgSrc, postTextForShare); // This will also call showShareButtons
+    }
+
+    document.getElementById("content").addEventListener("click", function (e) {
+      if (e.target.tagName === "IMG" && e.target.closest(".post")) {
+        if (!e.target.closest('.text[data-copyable]')) {
+             showModal(e.target.src);
+        }
+      }
+    });
+    
+    const imageModal = document.getElementById('imageModal');
+    const modalImageElement = document.getElementById('modalImage');
+
+    if (imageModal) {
+        imageModal.addEventListener('click', (event) => {
+            if (event.target === imageModal || event.target === modalImageElement) {
+                hideModal();
+            } else if (event.target !== document.getElementById('shareButtonsContainer') && !event.target.closest('#shareButtonsContainer')) {
+                // If click is on modal background (not image or share buttons), show share buttons
+                showShareButtons();
+            }
+        });
+        imageModal.addEventListener('mousemove', () => {
+             // For desktop: show buttons on mouse move within modal
+            if(document.getElementById("imageModal").style.display === "flex") {
+                showShareButtons();
+            }
+        });
+    }
+
+    document.addEventListener("keydown", function (e) {
+      const modalVisible = document.getElementById("imageModal").style.display === "flex";
+      if (!modalVisible) return;
+
+      if (e.key === "Escape") {
+        hideModal();
+      } else if (e.key === "ArrowRight") {
+        navigateModalImage(1);
+      } else if (e.key === "ArrowLeft") {
+        navigateModalImage(-1);
+      }
+    });
 
     fetchAndRender();
   </script>
