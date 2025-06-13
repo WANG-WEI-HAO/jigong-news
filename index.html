@@ -17,7 +17,7 @@
 
   <style>
     body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; transition: background 0.3s, color 0.3s; -webkit-tap-highlight-color: transparent; }
-    h1 { color: #5a4fcf; }
+    h2 { color: #5a4fcf; }
     .post { background: white; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .date { font-size: 0.9em; color: #888; }
     .text { margin-top: 0.5em; }
@@ -134,7 +134,7 @@
   </style>
 </head>
 <body>
-  <h1>濟公報(每日7:00更新)</h1>
+  <h2>濟公報(每日7:00更新)</h2>
 
   <button id="todayBtn" title="今日貼文">今日貼文</button>
   <button id="themeToggle" style="background: none; border: none; font-size: 1.5em; cursor: pointer; position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 999;">🌙</button>
@@ -316,10 +316,8 @@
         // 但主要的分享連結將是 siteToShareUrl。
         // Facebook 等平台會嘗試從 siteToShareUrl 抓取預覽圖片 (透過 Open Graph meta tags)。
 
-        const encodedImageUrl = imageUrl ? encodeURIComponent(imageUrl) : '';
         const shareTextContent = postText ? postText.substring(0, 100) + (postText.length > 100 ? "..." : "") : document.title;
-        // Line 分享訊息中優先包含圖片連結，如果圖片連結不存在，則退回網站連結
-        const lineShareText = encodedImageUrl ? encodeURIComponent(`${shareTextContent}\n圖片： ${imageUrl}`) : encodeURIComponent(`${shareTextContent}\n${siteToShareUrl}`);
+        const lineShareText = encodeURIComponent(`${shareTextContent}\n${siteToShareUrl}`); // Line 分享訊息中包含網站連結
         const shares = [
             // 移除了原本透過 <a> 標籤的 Facebook 按鈕，保留使用 window.open 的版本以求一致性。
             {
@@ -327,7 +325,7 @@
                 action: (event) => {
                     event.stopPropagation();
                     showShareButtons();
-                    const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedImageUrl || encodedSiteToShareUrl}`; // 優先分享圖片連結，否則分享網站連結
+                    const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedSiteToShareUrl}`; // 分享 Google Sites 頁面連結
                     window.open(fbShareUrl, '_blank', 'noopener,noreferrer');
                 },
                 icon: 'ICON/facebook.png'
