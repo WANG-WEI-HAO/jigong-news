@@ -333,6 +333,26 @@
                 console.log("Attempting to copy link (share button):", siteToShareUrl); // 複製 Google Sites 頁面連結
                 navigator.clipboard.writeText(siteToShareUrl).then(() => { console.log("Link copied successfully (share button)!"); const btn = event.currentTarget; const originalText = btn.innerHTML; btn.innerHTML = '✅ 已複製'; setTimeout(() => { btn.innerHTML = originalText; }, 1500); }).catch(err => { console.error('無法複製連結 (share button): ', err); alert('複製連結失敗。'); }); }, icon: '🔗'
             }
+            { name: '複製圖片與連結',
+                action: async (event) => {
+                    event.stopPropagation();
+                    showShareButtons();
+                    try {
+                        const response = await fetch(imageUrl);
+                        const blob = await response.blob();
+                        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                        await navigator.clipboard.writeText(siteToShareUrl);
+                        const btn = event.currentTarget;
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '✅ 已複製';
+                        setTimeout(() => { btn.innerHTML = originalText; }, 1500);
+                    } catch (err) {
+                        console.error('無法複製圖片或連結:', err);
+                        alert('複製圖片或連結失敗');
+                    }
+                },
+                icon: '📋', title: '複製圖片並附上網站連結'
+            }
         ];
         shares.forEach(share => {
             const element = share.url && !share.action ? document.createElement('a') : document.createElement('button');
