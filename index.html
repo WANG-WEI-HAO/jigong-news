@@ -274,11 +274,11 @@
     });
     const themeToggle = document.getElementById("themeToggle");
     const storedTheme = localStorage.getItem("theme");
-    if (storedTheme === "dark") { document.body.classList.add("dark-mode"); themeToggle.textContent = "☀"; } 
+    if (storedTheme === "dark") { document.body.classList.add("dark-mode"); themeToggle.textContent = "🔆"; } 
     else { themeToggle.textContent = "🌙"; }
     themeToggle.addEventListener("click", () => {
       document.body.classList.toggle("dark-mode"); const isDark = document.body.classList.contains("dark-mode");
-      localStorage.setItem("theme", isDark ? "dark" : "light"); themeToggle.textContent = isDark ? "☀" : "🌙";
+      localStorage.setItem("theme", isDark ? "dark" : "light"); themeToggle.textContent = isDark ? "🔆" : "🌙";
     });
 
     let imageList = []; let currentImageIndex = -1;
