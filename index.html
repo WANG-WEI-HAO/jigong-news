@@ -92,12 +92,26 @@
     #shareButtonsContainer.visible { opacity: 1; visibility: visible; }
 
     #shareButtonsContainer button, #shareButtonsContainer a {
-      background-color: #f0f0f0; color: #333; border: none; padding: 8px 15px;
-      border-radius: 5px; cursor: pointer; text-decoration: none; font-size: 0.9em;
-      display: inline-flex; align-items: center; gap: 5px; transition: background-color 0.2s, transform 0.1s;
+      background-color: transparent; color: #f0f0f0; border: none; /* padding: 8px 15px; */ /* Adjusted padding for icon-only will be used */
+      border-radius: 5px; cursor: pointer; text-decoration: none; /* font-size removed */
+      display: inline-flex; align-items: center; /* gap removed */ transition: background-color 0.2s, transform 0.1s;
+      padding: 6px 10px; /* Adjusted padding for icon-only, reduced vertical padding */
     }
     #shareButtonsContainer button:hover, #shareButtonsContainer a:hover { background-color: #ddd; }
     #shareButtonsContainer button:active, #shareButtonsContainer a:active { transform: scale(0.95); }
+
+    /* Style for image icons within share buttons - specific to transparent background */
+    #shareButtonsContainer button:hover img.share-btn-icon, 
+    #shareButtonsContainer a:hover img.share-btn-icon {
+        /* Optional: Change icon appearance on button hover, e.g., slight opacity change or filter */
+    }
+    #shareButtonsContainer .share-btn-icon {
+      width: 25px; /* Adjusted size for icon wrapper */
+      height: 25px; /* Adjusted size for icon wrapper */
+      cursor: pointer; /* 確保圖示懸停時為點擊指標 */
+      border-radius: 4px; /* 確保圖示為方形且有導角 */
+      overflow: hidden; /* Ensures the image respects the wrapper's border-radius */
+    }
 
     #todayBtn {
       position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999; padding: 0.8em 1.2em;
@@ -113,7 +127,8 @@
         bottom: 15px; padding: 8px 10px; gap: 8px;
       }
       #shareButtonsContainer button, #shareButtonsContainer a {
-        padding: 6px 10px; font-size: 0.8em;
+        padding: 4px 8px; /* Adjusted padding for icon-only in mobile, reduced vertical padding */
+        /* font-size removed */
       }
     }
   </style>
@@ -313,7 +328,7 @@
                     const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedSiteToShareUrl}`; // 分享 Google Sites 頁面連結
                     window.open(fbShareUrl, '_blank', 'noopener,noreferrer');
                 },
-                icon: '📘'
+                icon: 'ICON/facebook.png'
             },
             {
                 name: 'Instagram',
@@ -322,17 +337,46 @@
                     showShareButtons();
                     window.open(`https://www.instagram.com/`, '_blank', 'noopener,noreferrer');
                 },
-                icon: '📸', title: '在 Instagram 打開 (需手動上傳圖片)'
+                icon: 'ICON/instagram.png', title: '在 Instagram 打開 (需手動上傳圖片)'
             },
-            { name: 'Line', action: (event) => { event.stopPropagation(); showShareButtons(); window.open(`line://msg/text/?${lineShareText}`, '_blank'); }, icon: '📱' },
-            { name: '複製連結', action: (event) => { event.stopPropagation(); showShareButtons();
-                console.log("Attempting to copy image path (share button):", imageUrl);
-                navigator.clipboard.writeText(imageUrl).then(() => { console.log("Image path copied successfully (share button)!"); const btn = event.currentTarget; const originalText = btn.innerHTML; btn.innerHTML = '✅ 已複製'; setTimeout(() => { btn.innerHTML = originalText; }, 1500); }).catch(err => { console.error('無法複製路徑 (share button): ', err); alert('複製路徑失敗。'); }); }, icon: '🔗', title: '複製圖片路徑'
+            { 
+                name: 'Line', 
+                action: (event) => { event.stopPropagation(); showShareButtons(); window.open(`line://msg/text/?${lineShareText}`, '_blank'); }, 
+                icon: 'ICON/line.png'
+            },
+            { 
+                name: '複製網站及圖片連結', 
+                action: (event) => { 
+                    event.stopPropagation(); 
+                    showShareButtons();
+                    const currentClickedButton = event.currentTarget; // 在非同步操作前獲取按鈕元素
+                    const textToCopy = `網站連結：${siteToShareUrl}\n圖片連結：${imageUrl}`;
+                    console.log("Attempting to copy site and image links (share button):", textToCopy);
+
+                    navigator.clipboard.writeText(textToCopy).then(() => { 
+                        console.log("Site and image links copied successfully (share button)!"); 
+                        // const btn = event.currentTarget; // 舊的寫法，在 then 回呼中 event.currentTarget 可能為 null
+                        if (currentClickedButton) { // 使用先前儲存的按鈕元素
+                            const originalIconHTML = currentClickedButton.innerHTML; 
+                            currentClickedButton.innerHTML = '✅ 已複製'; 
+                            setTimeout(() => { 
+                                // 確保按鈕仍然在分享容器中再恢復其內容
+                                if (currentClickedButton.parentNode === document.getElementById('shareButtonsContainer')) {
+                                    currentClickedButton.innerHTML = originalIconHTML; 
+                                }
+                            }, 1500); 
+                        }
+                    }).catch(err => { 
+                        console.error('無法複製連結 (share button): ', err); 
+                        alert('複製連結失敗。'); 
+                    }); 
+                }, 
+                icon: 'ICON/link.png', title: '複製網站及圖片連結'
             }
         ];
         shares.forEach(share => {
             const element = share.url && !share.action ? document.createElement('a') : document.createElement('button');
-            element.innerHTML = `${share.icon} ${share.name}`; element.title = share.title || (share.name === '複製連結' ? '複製圖片路徑' : `分享到 ${share.name}`);
+            element.innerHTML = `<img src="${share.icon}" alt="${share.name}" class="share-btn-icon">`; element.title = share.title || `分享到 ${share.name}`;
             if (share.className) element.classList.add(share.className);
             if (share.url && !share.action) {
                 element.href = share.url; element.target = '_blank'; element.rel = 'noopener noreferrer';
