@@ -316,8 +316,10 @@
         // 但主要的分享連結將是 siteToShareUrl。
         // Facebook 等平台會嘗試從 siteToShareUrl 抓取預覽圖片 (透過 Open Graph meta tags)。
 
+        const encodedImageUrl = imageUrl ? encodeURIComponent(imageUrl) : '';
         const shareTextContent = postText ? postText.substring(0, 100) + (postText.length > 100 ? "..." : "") : document.title;
-        const lineShareText = encodeURIComponent(`${shareTextContent}\n${siteToShareUrl}`); // Line 分享訊息中包含網站連結
+        // Line 分享訊息中優先包含圖片連結，如果圖片連結不存在，則退回網站連結
+        const lineShareText = encodedImageUrl ? encodeURIComponent(`${shareTextContent}\n圖片： ${imageUrl}`) : encodeURIComponent(`${shareTextContent}\n${siteToShareUrl}`);
         const shares = [
             // 移除了原本透過 <a> 標籤的 Facebook 按鈕，保留使用 window.open 的版本以求一致性。
             {
@@ -325,7 +327,7 @@
                 action: (event) => {
                     event.stopPropagation();
                     showShareButtons();
-                    const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedSiteToShareUrl}`; // 分享 Google Sites 頁面連結
+                    const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedImageUrl || encodedSiteToShareUrl}`; // 優先分享圖片連結，否則分享網站連結
                     window.open(fbShareUrl, '_blank', 'noopener,noreferrer');
                 },
                 icon: 'ICON/facebook.png'
