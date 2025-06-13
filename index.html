@@ -235,7 +235,7 @@
     }
 
     function render(posts) { document.getElementById("content").innerHTML = ""; renderIndex = 0; renderBatch(); }
-    function getAllDates(posts) { return [...new Set(posts.map(post => post.date).filter(Boolean))].sort((a, b) => b.localeCompare(a)); }
+    function getAllDates(posts) { return [...new Set(posts.map(post => post.date).filter(Boolean))].sort((a, b) => b.localeCompare(a.date || "")); }
 
     function fetchAndRender() {
       fetch("posts.json")
@@ -270,11 +270,7 @@
       if (datePickerInstance) datePickerInstance.clear(); filterAndRender();
     });
     document.getElementById("todayBtn").addEventListener("click", () => {
-      const today = new Date(); const offset = today.getTimezoneOffset() * 60000;
-      const localISO = new Date(today - offset).toISOString().slice(0, 10);
-      document.getElementById("datePicker").value = localISO;
-      if (datePickerInstance) datePickerInstance.setDate(localISO, true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // 平滑捲動到頁面頂部
     });
     const themeToggle = document.getElementById("themeToggle");
     const storedTheme = localStorage.getItem("theme");
@@ -330,17 +326,13 @@
             },
             { name: 'Line', action: (event) => { event.stopPropagation(); showShareButtons(); window.open(`line://msg/text/?${lineShareText}`, '_blank'); }, icon: '📱' },
             { name: '複製連結', action: (event) => { event.stopPropagation(); showShareButtons();
-                console.log("Attempting to copy link (share button):", siteToShareUrl); // 複製 Google Sites 頁面連結
-                navigator.clipboard.writeText(siteToShareUrl).then(() => { console.log("Link copied successfully (share button)!"); const btn = event.currentTarget; const originalText = btn.innerHTML; btn.innerHTML = '✅ 已複製'; setTimeout(() => { btn.innerHTML = originalText; }, 1500); }).catch(err => { console.error('無法複製連結 (share button): ', err); alert('複製連結失敗。'); }); }, icon: '🔗'
-            },
-            { name: '複製路徑', action: (event) => { event.stopPropagation(); showShareButtons();
                 console.log("Attempting to copy image path (share button):", imageUrl);
-                navigator.clipboard.writeText(imageUrl).then(() => { console.log("Image path copied successfully (share button)!"); const btn = event.currentTarget; const originalText = btn.innerHTML; btn.innerHTML = '✅ 已複製'; setTimeout(() => { btn.innerHTML = originalText; }, 1500); }).catch(err => { console.error('無法複製路徑 (share button): ', err); alert('複製路徑失敗。'); }); }, icon: '📎', title: '複製圖片路徑'
+                navigator.clipboard.writeText(imageUrl).then(() => { console.log("Image path copied successfully (share button)!"); const btn = event.currentTarget; const originalText = btn.innerHTML; btn.innerHTML = '✅ 已複製'; setTimeout(() => { btn.innerHTML = originalText; }, 1500); }).catch(err => { console.error('無法複製路徑 (share button): ', err); alert('複製路徑失敗。'); }); }, icon: '🔗', title: '複製圖片路徑'
             }
         ];
         shares.forEach(share => {
             const element = share.url && !share.action ? document.createElement('a') : document.createElement('button');
-            element.innerHTML = `${share.icon} ${share.name}`; element.title = share.title || (share.name === '複製連結' ? '複製網站連結' : `分享到 ${share.name}`);
+            element.innerHTML = `${share.icon} ${share.name}`; element.title = share.title || (share.name === '複製連結' ? '複製圖片路徑' : `分享到 ${share.name}`);
             if (share.className) element.classList.add(share.className);
             if (share.url && !share.action) {
                 element.href = share.url; element.target = '_blank'; element.rel = 'noopener noreferrer';
