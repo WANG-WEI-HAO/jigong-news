@@ -176,24 +176,33 @@
         }, 1500);
     }
 
-    // Original copyTextToClipboard is commented out because renderBatch now contains the test logic.
-    // If you revert the test, uncomment this and remove the test logic from renderBatch.
-    /*
+    // 將文字複製到剪貼簿並顯示提示訊息
     async function copyTextToClipboard(textToCopy, elementForFeedback, originalDisplayHTML) {
         if (!textToCopy) return;
         if (!navigator.clipboard) {
             try {
-                const textArea = document.createElement("textarea"); textArea.value = textToCopy;
-                textArea.style.position = "fixed"; textArea.style.opacity = "0"; document.body.appendChild(textArea);
-                textArea.focus(); textArea.select(); document.execCommand('copy'); document.body.removeChild(textArea);
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed";
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
                 showCopyFeedback(elementForFeedback, "已複製！", false, originalDisplayHTML);
-            } catch (err) { showCopyFeedback(elementForFeedback, "複製失敗", true, originalDisplayHTML); }
+            } catch (err) {
+                showCopyFeedback(elementForFeedback, "複製失敗", true, originalDisplayHTML);
+            }
             return;
         }
-        try { await navigator.clipboard.writeText(textToCopy); showCopyFeedback(elementForFeedback, "已複製！", false, originalDisplayHTML); } 
-        catch (err) { showCopyFeedback(elementForFeedback, "複製失敗", true, originalDisplayHTML); }
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            showCopyFeedback(elementForFeedback, "已複製！", false, originalDisplayHTML);
+        } catch (err) {
+            showCopyFeedback(elementForFeedback, "複製失敗", true, originalDisplayHTML);
+        }
     }
-    */
 
     function renderBatch() {
       const container = document.getElementById("content");
@@ -209,26 +218,15 @@
         if (textElement) {
             textElement.innerHTML = displayTextForRender;
 
-            // --- INTEGRATED TEST CODE for clipboard ---
-            if (displayTextForRender.trim() !== "") { 
+            if (displayTextForRender.trim() !== "") {
                 textElement.setAttribute('data-copyable', '');
-                textElement.setAttribute('title', '點擊複製測試文字'); 
+                textElement.setAttribute('title', '點擊複製');
 
                 textElement.addEventListener('click', (event) => {
-                    if (event.target.tagName === 'IMG') return; 
-                    console.log("Attempting to copy 'test'"); 
-                    navigator.clipboard.writeText("test") 
-                        .then(() => {
-                            console.log("Test text copied successfully!"); 
-                            showCopyFeedback(textElement, "測試複製成功！", false, displayTextForRender);
-                        })
-                        .catch(err => {
-                            console.error("Test text copy failed: ", err); 
-                            showCopyFeedback(textElement, "測試複製失敗", true, displayTextForRender);
-                        });
+                    if (event.target.tagName === 'IMG') return;
+                    copyTextToClipboard(post.text, textElement, displayTextForRender);
                 });
             }
-            // --- END OF INTEGRATED TEST CODE ---
         }
         container.appendChild(div);
       });
