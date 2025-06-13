@@ -19,9 +19,8 @@
     body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; transition: background 0.3s, color 0.3s; -webkit-tap-highlight-color: transparent; }
     h2 { color: #5a4fcf; }
     .post { background: white; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    .date { font-size: 0.9em; color: #888; }
-    .text { margin-top: 0.5em; }
-    .text[data-copyable] { cursor: pointer; }
+    .date { font-size: 0.9em; color: #888; }    .text { margin-top: 0.5em; }
+    /* .text[data-copyable] { cursor: pointer; } /* 移除點擊複製功能後，不再需要 pointer cursor */
     .text[data-copyable]:hover { background-color: #f0f0f0; }
     body.dark-mode .text[data-copyable]:hover { background-color: #3a3a3a; }
 
@@ -270,11 +269,11 @@
 
             if (displayTextForRender.trim() !== "") {
                 textElement.setAttribute('data-copyable', '');
-                textElement.setAttribute('title', '點擊複製');
+                // textElement.setAttribute('title', '點擊複製'); // 移除複製功能，不再需要此提示
 
                 textElement.addEventListener('click', (event) => {
                     if (event.target.tagName === 'IMG') return;
-                    copyTextToClipboard(post.text, textElement, displayTextForRender);
+                    // copyTextToClipboard(post.text, textElement, displayTextForRender); // 移除點擊複製文字的功能
                 });
             }
         }
