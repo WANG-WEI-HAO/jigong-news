@@ -97,11 +97,18 @@
         text-shadow: 0 0 5px black;
         z-index: 10001;
         border-radius: 8px; /* 圓角 */
+        opacity: 0; /* 預設隱藏 */
+        visibility: hidden; /* 預設隱藏 */
+        transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; /* 過渡效果 */
     }
     .modal-nav-btn:hover { background-color: rgba(0, 0, 0, 0.6); }
-    #modalPrevBtn { left: 20px; }
-    #modalNextBtn { right: 20px; }
+    #modalPrevBtn { left: 40px; } /* 向內縮40px */
+    #modalNextBtn { right: 40px; } /* 向內縮40px */
 
+    .modal-nav-btn.visible { /* 用於顯示按鈕的 class */
+        opacity: 1;
+        visibility: visible;
+    }
     #shareButtonsContainer {
       position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
       background-color: rgba(30, 30, 30, 0.85); padding: 10px 15px; border-radius: 8px;
@@ -141,9 +148,10 @@
     @media (max-width: 700px) {
       .input-row { flex-direction: column; gap: 0.5em; }
       #search, #datePicker { width: 100%; }
-      #modalCloseBtn, .modal-nav-btn { top: 15px; font-size: 1.8em; } /* Adjust nav buttons for mobile */
-      #modalPrevBtn { left: 15px; transform: translateY(0); } /* Adjust nav buttons for mobile */
-      #modalNextBtn { right: 15px; transform: translateY(0); } /* Adjust nav buttons for mobile */
+      #modalCloseBtn { top: 15px; font-size: 1.8em; } /* 手機版關閉按鈕樣式 */
+      .modal-nav-btn { font-size: 1.8em; /* 手機版導覽按鈕字體大小，top 和 transform 會繼承基礎樣式以垂直置中 */ }
+      #modalPrevBtn { left: 35px; /* 手機版左箭頭位置 */ } 
+      #modalNextBtn { right: 35px; /* 手機版右箭頭位置 */ }
       #shareButtonsContainer {
         bottom: 15px; padding: 8px 10px; gap: 8px;
       }
@@ -186,9 +194,13 @@
     let filteredPosts = [];
     let datePickerInstance = null;
     let renderIndex = 0;
-    const batchSize = 10;
+    const batchSize = 10; // 每批加載的文章數量
+    // 分享按鈕的隱藏邏輯
     let shareButtonsTimeout = null;
     const shareButtonHideDelay = 3000;
+    // 模態框導覽按鈕的隱藏邏輯
+    let modalNavButtonsTimeout = null;
+    const modalNavButtonHideDelay = 2000; // 導覽按鈕2秒後隱藏
     let touchStartX = 0;
     let touchEndX = 0;
     const swipeThreshold = 50;
@@ -330,6 +342,27 @@
     }
     function hideShareButtons() { const container = document.getElementById('shareButtonsContainer'); if (container) container.classList.remove('visible'); }
 
+    function showModalNavButtons() {
+        const prevBtn = document.getElementById('modalPrevBtn');
+        const nextBtn = document.getElementById('modalNextBtn');
+        if (prevBtn && nextBtn && imageModal.style.display === "flex") { // 僅當模態框可見時操作
+            prevBtn.classList.add('visible');
+            nextBtn.classList.add('visible');
+            clearTimeout(modalNavButtonsTimeout);
+            modalNavButtonsTimeout = setTimeout(hideModalNavButtons, modalNavButtonHideDelay);
+        }
+    }
+
+    function hideModalNavButtons() {
+        const prevBtn = document.getElementById('modalPrevBtn');
+        const nextBtn = document.getElementById('modalNextBtn');
+        if (prevBtn && nextBtn) {
+            prevBtn.classList.remove('visible');
+            nextBtn.classList.remove('visible');
+        }
+    }
+
+
     function generateShareButtons(imageUrl, postText = "") {
         const container = document.getElementById('shareButtonsContainer'); if (!container) return; container.innerHTML = ''; 
         
@@ -426,12 +459,14 @@
             }
         }
         generateShareButtons(modalImg.src, postTextForShare);
+        showModalNavButtons(); // 顯示模態框時同時顯示導覽按鈕
     }
 
     function hideModal() {
         const modal = document.getElementById("imageModal"); modal.style.display = "none";
         document.body.style.overflow = 'auto'; currentImageIndex = -1;
-        clearTimeout(shareButtonsTimeout); hideShareButtons();
+        clearTimeout(shareButtonsTimeout); hideShareButtons(); // 清理分享按鈕
+        clearTimeout(modalNavButtonsTimeout); hideModalNavButtons(); // 清理並隱藏導覽按鈕
     }
     
     function navigateModalImage(direction) {
@@ -445,6 +480,7 @@
         const originalPost = filteredPosts.find(p => getImageUrl(p.image) === newImgSrc);
         if (originalPost && originalPost.text) postTextForShare = originalPost.text;
         generateShareButtons(newImgSrc, postTextForShare);
+        showModalNavButtons(); // 導覽時重置並顯示導覽按鈕
     }
 
     document.getElementById("content").addEventListener("click", function (e) {
@@ -456,7 +492,7 @@
     const imageModal = document.getElementById('imageModal');
     const modalCloseButton = document.getElementById('modalCloseBtn'); 
 
-    if (imageModal) {
+    if (imageModal) { // 確認 imageModal 元素存在
         imageModal.addEventListener('click', (event) => {
             if (event.target === imageModal) { // Only close if clicking on the modal background itself
                  hideModal();
@@ -464,10 +500,15 @@
                        event.target !== modalCloseButton && 
                        !event.target.closest('#shareButtonsContainer') &&
                        event.target !== document.getElementById('shareButtonsContainer')) {
-                showShareButtons();
+                showShareButtons(); // 點擊模態框背景（非圖片、非按鈕）時顯示分享按鈕
+                showModalNavButtons(); // 同時顯示導覽按鈕
             }
         });
-        imageModal.addEventListener('mousemove', () => { if(imageModal.style.display === "flex") showShareButtons(); });
+        imageModal.addEventListener('mousemove', () => { 
+            if(imageModal.style.display === "flex") {
+                showShareButtons(); showModalNavButtons(); 
+            }
+        });
         imageModal.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { touchStartX = e.touches[0].clientX; touchEndX = 0; }}, { passive: true });
         imageModal.addEventListener('touchmove', (e) => { if (e.touches.length === 1) touchEndX = e.touches[0].clientX; }, { passive: true });
         imageModal.addEventListener('touchend', () => {
@@ -477,6 +518,14 @@
             touchStartX = 0; touchEndX = 0;
         });
     }
+    const modalImageElement = document.getElementById('modalImage');
+    if (modalImageElement) {
+        modalImageElement.addEventListener('click', () => {
+            showShareButtons(); // 點擊圖片時顯示分享按鈕
+            showModalNavButtons(); // 同時顯示導覽按鈕
+        });
+    }
+
 
     if (modalCloseButton) { 
         modalCloseButton.addEventListener('click', hideModal);
@@ -486,10 +535,10 @@
     const modalNextButton = document.getElementById('modalNextBtn');
 
     if (modalPrevButton) {
-        modalPrevButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(-1); });
+        modalPrevButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(-1); /* navigateModalImage 內部會調用 showModalNavButtons */ });
     }
     if (modalNextButton) {
-        modalNextButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(1); });
+        modalNextButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(1); /* navigateModalImage 內部會調用 showModalNavButtons */ });
     }
     document.addEventListener("keydown", function (e) {
       const modalVisible = imageModal.style.display === "flex"; if (!modalVisible) return;
