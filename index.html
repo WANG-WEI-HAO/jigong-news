@@ -82,6 +82,25 @@
         color: #ccc;
     }
 
+    .modal-nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 3em; /* 調整大小 */
+        font-weight: bold; /* 粗體 */
+        color: white;
+        background-color: rgba(0, 0, 0, 0.3); /* 半透明背景 */
+        border: none;
+        cursor: pointer;
+        padding: 0.3em 0.6em; /* 調整內邊距 */
+        line-height: 1;
+        text-shadow: 0 0 5px black;
+        z-index: 10001;
+        border-radius: 8px; /* 圓角 */
+    }
+    .modal-nav-btn:hover { background-color: rgba(0, 0, 0, 0.6); }
+    #modalPrevBtn { left: 20px; }
+    #modalNextBtn { right: 20px; }
 
     #shareButtonsContainer {
       position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
@@ -122,7 +141,9 @@
     @media (max-width: 700px) {
       .input-row { flex-direction: column; gap: 0.5em; }
       #search, #datePicker { width: 100%; }
-      #modalCloseBtn { top: 15px; right: 15px; font-size: 1.8em; }
+      #modalCloseBtn, .modal-nav-btn { top: 15px; font-size: 1.8em; } /* Adjust nav buttons for mobile */
+      #modalPrevBtn { left: 15px; transform: translateY(0); } /* Adjust nav buttons for mobile */
+      #modalNextBtn { right: 15px; transform: translateY(0); } /* Adjust nav buttons for mobile */
       #shareButtonsContainer {
         bottom: 15px; padding: 8px 10px; gap: 8px;
       }
@@ -150,7 +171,9 @@
 
   <div id="imageModal">
     <button id="modalCloseBtn" title="關閉">×</button>
+    <button id="modalPrevBtn" class="modal-nav-btn" title="上一張">&lt;</button>
     <img src="" alt="放大圖片" id="modalImage">
+    <button id="modalNextBtn" class="modal-nav-btn" title="下一張">&gt;</button>
     <div id="shareButtonsContainer">
       <!-- Share buttons will be generated here by JS -->
     </div>
@@ -459,6 +482,15 @@
         modalCloseButton.addEventListener('click', hideModal);
     }
 
+    const modalPrevButton = document.getElementById('modalPrevBtn');
+    const modalNextButton = document.getElementById('modalNextBtn');
+
+    if (modalPrevButton) {
+        modalPrevButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(-1); });
+    }
+    if (modalNextButton) {
+        modalNextButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(1); });
+    }
     document.addEventListener("keydown", function (e) {
       const modalVisible = imageModal.style.display === "flex"; if (!modalVisible) return;
       if (e.key === "Escape") hideModal();
