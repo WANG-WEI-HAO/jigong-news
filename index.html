@@ -1,119 +1,658 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>崇元福利社智慧核系統</title>
+  <title>濟公報</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#5a4fcf"/>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
-  <!--─ Viewport 與全螢幕 ─-->
-  <meta name="viewport"
-        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,minimal-ui">
-  <meta name="theme-color" content="#3f51b5">
-  <!-- iOS 全螢幕 -->
+  <!-- Apple PWA tags -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="濟公報">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4EBM386ZCS"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-4EBM386ZCS');
+  </script>
 
-  <!--─ SEO / PWA ─-->
-  <meta name="description" content="本崇元福利社智慧核系統已導入 Progressive Web App，可安裝至桌面使用。">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icons/icon-192.png">
-
-  <!--─ OG 預覽 ─-->
-  <meta property="og:title"       content="崇元福利社智慧核系統">
-  <meta property="og:description" content="開啟本系統，啟用智慧功能">
-  <meta property="og:image"       content="https://wang-wei-hao.github.io/fycd.tc.shop.IntelligentCore/icons/icon-512.png">
-  <meta property="og:url"         content="https://wang-wei-hao.github.io/fycd.tc.shop.IntelligentCore/">
-
-  <!--─ 核心樣式 ─-->
   <style>
-    /* 全程禁用橡皮筋回彈與縮放 ──*/
-    html,body{
-      overscroll-behavior: none;
-      touch-action: none;
-      overflow:hidden;
-      margin:0;padding:2em;
-      font-family:sans-serif;
-      background:#f0f4f8;
-      display:flex;flex-direction:column;justify-content:center;align-items:center;
-      min-height:100vh;box-sizing:border-box;
+    body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; transition: background 0.3s, color 0.3s; -webkit-tap-highlight-color: transparent; }
+    h1 { color: #5a4fcf; display: flex; align-items: baseline; flex-wrap: wrap; }
+    h1 .subtitle {
+      font-size: 0.6em; /* 調整為 h1 的 60% 大小 */
+      font-weight: normal; /* 正常字重 */
+      color: #666; /* 較淺的顏色 */
+      margin-left: 0.5em; /* 與主標題的間距 */
     }
-    #message{font-size:1.2em;color:#333;margin-bottom:1em}
-    .spinner{width:48px;height:48px;margin:2em auto;border:6px solid #ccc;
-      border-top:6px solid #3f51b5;border-radius:50%;animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .action-button{background:#3f51b5;color:#fff;padding:10px 20px;border:none;border-radius:5px;
-      font-size:1em;cursor:pointer;margin-top:1em}
-    .action-button:hover{background:#303f9f}
+    .footer {
+            text-align: center;
+            padding: 5px;
+            margin-top: 5px;
+            border-top: 1px solid #e9ecef;
+            color: #6c757d;
+        }
+    .post { background: white; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .date { font-size: 0.9em; color: #888; }    .text { margin-top: 0.5em; }
+    /* .text[data-copyable] { cursor: pointer; } /* 移除點擊複製功能後，不再需要 pointer cursor */
+    .text[data-copyable]:hover { background-color: #f0f0f0; }
+    body.dark-mode .text[data-copyable]:hover { background-color: #3a3a3a; }
+
+    img { max-width: 100%; margin-top: 1em; border-radius: 6px; cursor: zoom-in; }
+    .input-row { display: flex; gap: 1em; margin-bottom: 2em; align-items: center; flex-wrap: wrap; }
+    #search, #datePicker {
+      padding: 0.5em; width: 180px; max-width: 100%; font-size: 1em; margin-bottom: 0;
+      box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; transition: border-color 0.2s;
+    }
+    #search:focus, #datePicker:focus { border-color: #5a4fcf; outline: none; }
+    #loadMoreBtn {
+      display: none; padding: 0.6em 1.2em; font-size: 1em; background: #5a4fcf; color: white;
+      border: none; border-radius: 5px; cursor: pointer; margin: 1em auto;
+    }
+    .reset-btn {
+      background: none; border: none; cursor: pointer; font-size: 1.5em; color: #5a4fcf;
+      padding: 0.2em 0.5em; border-radius: 4px; transition: background 0.2s;
+    }
+    .reset-btn:hover { background: #ecebfa; }
+
+    body.dark-mode { background: #1e1e1e; color: #f0f0f0; }
+    body.dark-mode .post { background: #2c2c2c; box-shadow: 0 2px 5px rgba(255,255,255,0.05); }
+    body.dark-mode .date { color: #bbb; }
+    body.dark-mode h1 .subtitle { color: #bbb; }
+    body.dark-mode input, body.dark-mode #search, body.dark-mode #datePicker {
+      background: #333; color: white; border-color: #555;
+    }
+    body.dark-mode #loadMoreBtn { background: #444; }
+    body.dark-mode .reset-btn { color: #aaa; }
+    body.dark-mode .reset-btn:hover { background: #333; }
+
+    #imageModal {
+      display: none; position: fixed; z-index: 9999; top: 0; left: 0;
+      width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85);
+      justify-content: center; align-items: center; overflow: hidden;
+    }
+    #imageModal img {
+      max-width: 90vw; max-height: 90vh; border-radius: 10px;
+      box-shadow: 0 0 20px black;
+      /* cursor: default; */ /* Image is no longer clickable to close */
+      user-select: none; -webkit-user-drag: none;
+    }
+
+    #modalCloseBtn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        font-size: 2em;
+        color: white;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.2em 0.5em;
+        line-height: 1;
+        text-shadow: 0 0 5px black;
+        z-index: 10001; 
+    }
+     #modalCloseBtn:hover {
+        color: #ccc;
+    }
+
+    .modal-nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 3em; /* 調整大小 */
+        font-weight: bold; /* 粗體 */
+        color: white;
+        background-color: rgba(0, 0, 0, 0.3); /* 半透明背景 */
+        border: none;
+        cursor: pointer;
+        padding: 0.3em 0.6em; /* 調整內邊距 */
+        line-height: 1;
+        text-shadow: 0 0 5px black;
+        z-index: 10001;
+        border-radius: 8px; /* 圓角 */
+        opacity: 0; /* 預設隱藏 */
+        visibility: hidden; /* 預設隱藏 */
+        transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; /* 過渡效果 */
+    }
+    .modal-nav-btn:hover { background-color: rgba(0, 0, 0, 0.6); }
+    #modalPrevBtn { left: 40px; } /* 向內縮40px */
+    #modalNextBtn { right: 40px; } /* 向內縮40px */
+
+    .modal-nav-btn.visible { /* 用於顯示按鈕的 class */
+        opacity: 1;
+        visibility: visible;
+    }
+    #shareButtonsContainer {
+      position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%);
+      background-color: rgba(30, 30, 30, 0.85); padding: 10px 15px; border-radius: 8px;
+      display: flex; gap: 12px; z-index: 10000; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    }
+    #shareButtonsContainer.visible { opacity: 1; visibility: visible; }
+
+    #shareButtonsContainer button, #shareButtonsContainer a {
+      background-color: transparent; color: #f0f0f0; border: none; /* padding: 8px 15px; */ /* Adjusted padding for icon-only will be used */
+      border-radius: 5px; cursor: pointer; text-decoration: none; /* font-size removed */
+      display: inline-flex; align-items: center; /* gap removed */ transition: background-color 0.2s, transform 0.1s;
+      padding: 6px 10px; /* Adjusted padding for icon-only, reduced vertical padding */
+    }
+    #shareButtonsContainer button:hover, #shareButtonsContainer a:hover { background-color: #ddd; }
+    #shareButtonsContainer button:active, #shareButtonsContainer a:active { transform: scale(0.95); }
+
+    /* Style for image icons within share buttons - specific to transparent background */
+    #shareButtonsContainer button:hover img.share-btn-icon, 
+    #shareButtonsContainer a:hover img.share-btn-icon {
+        /* Optional: Change icon appearance on button hover, e.g., slight opacity change or filter */
+    }
+    #shareButtonsContainer .share-btn-icon {
+      width: 25px; /* Adjusted size for icon wrapper */
+      height: 25px; /* Adjusted size for icon wrapper */
+      cursor: pointer; /* 確保圖示懸停時為點擊指標 */
+      border-radius: 4px; /* 確保圖示為方形且有導角 */
+      overflow: hidden; /* Ensures the image respects the wrapper's border-radius */
+    }
+
+    #todayBtn {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999; padding: 0.8em 1.2em;
+      font-size: 1em; background: #28a745; color: white; border: none;
+      border-radius: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    #notificationsBtn {
+      position: fixed; 
+      bottom: 1.5rem; 
+      right: 9rem; /* 從 7.5rem 增加到 9rem 以拉開間距 */
+      z-index: 999; 
+      padding: 0.8em 1.2em; 
+      font-size: 1em; 
+      background: #ffc107; 
+      color: black; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    #themeToggle {
+      background: none; 
+      border: none; 
+      font-size: 1.5em; 
+      cursor: pointer; 
+      position: fixed; 
+      bottom: 1.5rem; 
+      left: 1.5rem; 
+      z-index: 999;
+    }
+
+    @media (max-width: 700px) {
+      .input-row { flex-direction: column; gap: 0.5em; }
+      #search, #datePicker { width: 100%; }
+      #modalCloseBtn { top: 15px; font-size: 1.8em; } /* 手機版關閉按鈕樣式 */
+      .modal-nav-btn { font-size: 1.8em; /* 手機版導覽按鈕字體大小，top 和 transform 會繼承基礎樣式以垂直置中 */ }
+      #modalPrevBtn { left: 35px; /* 手機版左箭頭位置 */ } 
+      #modalNextBtn { right: 35px; /* 手機版右箭頭位置 */ }
+      #shareButtonsContainer {
+        bottom: 15px; padding: 8px 10px; gap: 8px;
+      }
+      #shareButtonsContainer button, #shareButtonsContainer a {
+        padding: 4px 8px; /* Adjusted padding for icon-only in mobile, reduced vertical padding */
+        /* font-size removed */
+      }
+    }
   </style>
+
 </head>
 <body>
-  <div class="spinner"></div>
-  <div id="message">🔧 正在載入頁面…</div>
+  <h1>濟公報<span class="subtitle">（每日7:00更新）</span></h1>
+  <button id="todayBtn" title="今日貼文">今日貼文</button>  
+  <button id="notificationsBtn" title="啟用更新通知">🔔 啟用通知</button>
+  <button id="themeToggle">🌙</button>
 
-  <script>
-  /*－－ 目標網址 －－*/
-  const SITE_URL = "https://sites.google.com/view/fycd-tc-shop-pos/%E5%B4%87%E5%85%83%E7%A6%8F%E5%88%A9%E7%A4%BE%E6%99%BA%E6%85%A7%E6%A0%B8%E7%B3%BB%E7%B5%B1";
+  <div class="input-row">
+    <input id="search" type="text" placeholder="搜尋內容..." />
+    <input id="datePicker" type="text" placeholder="選擇日期..." readonly />
+    <button id="resetBtn" class="reset-btn">↻</button>
+  </div>
 
-  /*－－ 瀏覽器 / 裝置偵測 －－*/
-  function detectClient(){
-    const ua = navigator.userAgent;
-    const isIOS   = /iPhone|iPad|iPod/i.test(ua)|| (ua.includes('Mac') && 'ontouchend' in document);
-    const isAnd   = /Android/i.test(ua);
-    const isChr   = /Chrome\/\d+/i.test(ua)&&!ua.includes('Edg/');
-    const isEdg   = /Edg\/\d+/i.test(ua);
-    const isFx    = /Firefox\/\d+/i.test(ua);
-    const isSaf   = /Safari\/\d+/i.test(ua)&&!isChr&&!isEdg;
-    return {
-      isIOS,isAnd,isChr,isEdg,isFx,isSaf,
-      inPWA: matchMedia('(display-mode: standalone)').matches||
-             matchMedia('(display-mode: fullscreen)').matches||
-             navigator.standalone===true
-    };
-  }
+  <div id="content"></div>
+  <button id="loadMoreBtn">顯示更多</button>
 
-  /*－－ 進入瀏覽器全螢幕（非 PWA 時保險用）－－*/
-  function requestFull(){
-    const el=document.documentElement;
-    const req= el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
-    if(req) req.call(el);
-  }
+  <div id="imageModal">
+    <button id="modalCloseBtn" title="關閉">×</button>
+    <button id="modalPrevBtn" class="modal-nav-btn" title="上一張">&lt;</button>
+    <img src="" alt="放大圖片" id="modalImage">
+    <button id="modalNextBtn" class="modal-nav-btn" title="下一張">&gt;</button>
+    <div id="shareButtonsContainer">
+      <!-- Share buttons will be generated here by JS -->
+    </div>
+  </div>
 
-  window.addEventListener('load',()=>{
-    const c = detectClient();
-    const msg=document.getElementById('message');
-    document.addEventListener('click',requestFull,{once:true}); // 首次點擊即嘗試全螢幕
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
+ <script>
+    let allPosts = [];
+    let filteredPosts = [];
+    let datePickerInstance = null;
+    let renderIndex = 0;
+    const batchSize = 10; // 每批加載的文章數量
+    // 分享按鈕的隱藏邏輯
+    let shareButtonsTimeout = null;
+    const shareButtonHideDelay = 3000;
+    // 模態框導覽按鈕的隱藏邏輯
+    let modalNavButtonsTimeout = null;
+    const modalNavButtonHideDelay = 2000; // 導覽按鈕2秒後隱藏
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const swipeThreshold = 50;
 
-    /* 已安裝 → 直接跳 */
-    if(c.inPWA){
-      msg.textContent='App 正在啟動…';
-      window.location.href=SITE_URL;
-      return;
+    function getImageUrl(imagePath) {
+      if (!imagePath) return "";
+      if (/^https?:\/\//.test(imagePath)) return imagePath;
+      return imagePath.replace(/\\/g, '/');
     }
 
-    /* 安裝提示 */
-    let hint='📲 建議安裝至桌面，享受全螢幕體驗。';
-    if(c.isIOS&&c.isSaf)      hint='📲 在 Safari 底部「分享」→『加入主畫面』安裝。';
-    else if(c.isAnd&&(c.isChr||c.isEdg))
-                              hint='📲 點網址列右側「安裝圖示」或選單「加入主畫面」。';
-    else if(c.isFx)           hint='🦊 Firefox 可用「⋮ 選單→安裝」或手動加入書籤。';
+    function showCopyFeedback(element, message, isError = false, originalHTML) {
+        const originalTitle = element.getAttribute('title'); const originalCursor = element.style.cursor;
+        const originalDataCopyable = element.hasAttribute('data-copyable');
+        element.textContent = message;
+        element.style.color = isError ? 'red' : (document.body.classList.contains('dark-mode') ? '#a5d6a7' : '#2e7d32');
+        element.style.fontWeight = 'bold'; element.style.cursor = 'default';
+        if(originalDataCopyable) element.removeAttribute('data-copyable'); element.removeAttribute('title');
+        setTimeout(() => {
+            element.innerHTML = originalHTML; element.style.color = ''; element.style.fontWeight = '';
+            element.style.cursor = originalCursor;
+            if(originalDataCopyable) element.setAttribute('data-copyable', '');
+            if(originalTitle) element.setAttribute('title', originalTitle);
+        }, 1500);
+    }
 
-    msg.innerHTML=`👋 歡迎使用<br><br>${hint}<br>
-                   將在<strong>20 秒</strong>後自動跳轉網站，<br>
-                   或點擊下方按鈕立即前往。`;
-    document.querySelector('.spinner').style.display='none';
+    // 將文字複製到剪貼簿並顯示提示訊息
+    async function copyTextToClipboard(textToCopy, elementForFeedback, originalDisplayHTML) {
+        if (!textToCopy) return;
+        if (!navigator.clipboard) {
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed";
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showCopyFeedback(elementForFeedback, "已複製！", false, originalDisplayHTML);
+            } catch (err) {
+                showCopyFeedback(elementForFeedback, "複製失敗", true, originalDisplayHTML);
+            }
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            showCopyFeedback(elementForFeedback, "已複製！", false, originalDisplayHTML);
+        } catch (err) {
+            showCopyFeedback(elementForFeedback, "複製失敗", true, originalDisplayHTML);
+        }
+    }
 
-    const btn=document.createElement('button');
-    btn.className='action-button';
-    btn.textContent='立即前往網站';
-    btn.onclick=()=>window.location.href=SITE_URL;
-    document.body.appendChild(btn);
+    function renderBatch() {
+      const container = document.getElementById("content");
+      const postsToRender = filteredPosts.slice(renderIndex, renderIndex + batchSize);
+      postsToRender.forEach(post => {
+        const div = document.createElement("div"); div.className = "post";
+        const imgTag = post.image ? `<img src="${getImageUrl(post.image)}" alt="圖片" onerror="this.style.display='none';">` : "";
+        const displayTextForRender = (post.text || "").replace(/\n/g, "<br>");
+        
+        div.innerHTML = `<div class="date">${post.date || ""}</div><div class="text"></div>${imgTag}`;
+        const textElement = div.querySelector('.text');
 
-    setTimeout(()=>{ if(!document.hidden) window.location.href=SITE_URL; },20000);
-  });
+        if (textElement) {
+            textElement.innerHTML = displayTextForRender;
 
-  /*－－ 註冊 SW －－*/
-  if('serviceWorker'in navigator){
-    navigator.serviceWorker.register('service-worker.js');
-  }
+            if (displayTextForRender.trim() !== "") {
+                textElement.setAttribute('data-copyable', '');
+                // textElement.setAttribute('title', '點擊複製'); // 移除複製功能，不再需要此提示
+
+                textElement.addEventListener('click', (event) => {
+                    if (event.target.tagName === 'IMG') return;
+                    // copyTextToClipboard(post.text, textElement, displayTextForRender); // 移除點擊複製文字的功能
+                });
+            }
+        }
+        container.appendChild(div);
+      });
+      renderIndex += postsToRender.length;
+      document.getElementById("loadMoreBtn").style.display = renderIndex >= filteredPosts.length ? "none" : "block";
+    }
+
+    function render(posts) { document.getElementById("content").innerHTML = ""; renderIndex = 0; renderBatch(); }
+    function getAllDates(posts) { return [...new Set(posts.map(post => post.date).filter(Boolean))].sort((a, b) => b.localeCompare(a.date || "")); }
+
+    function fetchAndRender() {
+      fetch("posts.json")
+        .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.json(); })
+        .then(data => {
+          allPosts = data.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+          filteredPosts = allPosts; render(filteredPosts);
+          if (datePickerInstance) datePickerInstance.destroy();
+          datePickerInstance = flatpickr("#datePicker", {
+            dateFormat: "Y-m-d", disableMobile: true, locale: "zh_tw",
+            onChange: function() { filterAndRender(); }, enable: getAllDates(allPosts)
+          });
+        })
+        .catch(error => { console.error("Error fetching or processing posts:", error); document.getElementById("content").innerHTML = "<p>無法載入文章，請稍後再試。</p>"; });
+    }
+
+    function filterAndRender() {
+      const keywordInput = document.getElementById("search").value.trim().toLowerCase();
+      const keywords = keywordInput.split(/\s+/).filter(Boolean); const date = document.getElementById("datePicker").value.trim();
+      filteredPosts = allPosts.filter(post => {
+        const postText = (post.text || "").toLowerCase(); const postDate = (post.date || "");
+        const matchText = keywords.length === 0 || keywords.every(kw => postText.includes(kw));
+        const matchDate = !date || postDate === date; return matchText && matchDate;
+      });
+      render(filteredPosts);
+    }
+
+    document.getElementById("search").addEventListener("input", filterAndRender);
+    document.getElementById("loadMoreBtn").addEventListener("click", renderBatch);
+    document.getElementById("resetBtn").addEventListener("click", function() {
+      document.getElementById("search").value = ""; document.getElementById("datePicker").value = "";
+      if (datePickerInstance) datePickerInstance.clear(); filterAndRender();
+    });
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // 平滑捲動到頁面頂部
+    });
+    const themeToggle = document.getElementById("themeToggle");
+    const storedTheme = localStorage.getItem("theme");
+    if (storedTheme === "dark") { document.body.classList.add("dark-mode"); themeToggle.textContent = "🔆"; } 
+    else { themeToggle.textContent = "🌙"; }
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark-mode"); const isDark = document.body.classList.contains("dark-mode");
+      localStorage.setItem("theme", isDark ? "dark" : "light"); themeToggle.textContent = isDark ? "🔆" : "🌙";
+    });
+
+    let imageList = []; let currentImageIndex = -1;
+    function updateImageList() { imageList = Array.from(document.querySelectorAll(".post img")).map(img => img.src); }
+
+    function showShareButtons() {
+        const container = document.getElementById('shareButtonsContainer');
+        if (container) { container.classList.add('visible'); clearTimeout(shareButtonsTimeout);
+            shareButtonsTimeout = setTimeout(hideShareButtons, shareButtonHideDelay);
+        }
+    }
+    function hideShareButtons() { const container = document.getElementById('shareButtonsContainer'); if (container) container.classList.remove('visible'); }
+
+    function showModalNavButtons() {
+        const prevBtn = document.getElementById('modalPrevBtn');
+        const nextBtn = document.getElementById('modalNextBtn');
+        if (prevBtn && nextBtn && imageModal.style.display === "flex") { // 僅當模態框可見時操作
+            prevBtn.classList.add('visible');
+            nextBtn.classList.add('visible');
+            clearTimeout(modalNavButtonsTimeout);
+            modalNavButtonsTimeout = setTimeout(hideModalNavButtons, modalNavButtonHideDelay);
+        }
+    }
+
+    function hideModalNavButtons() {
+        const prevBtn = document.getElementById('modalPrevBtn');
+        const nextBtn = document.getElementById('modalNextBtn');
+        if (prevBtn && nextBtn) {
+            prevBtn.classList.remove('visible');
+            nextBtn.classList.remove('visible');
+        }
+    }
+
+
+    function generateShareButtons(imageUrl, postText = "") {
+        const container = document.getElementById('shareButtonsContainer'); if (!container) return; container.innerHTML = ''; 
+        
+        const siteToShareUrl = "https://sites.google.com/view/fycd-tc/%E6%BF%9F%E5%85%AC%E5%A0%B1";
+        const encodedSiteToShareUrl = encodeURIComponent(siteToShareUrl);
+        // imageUrl (原始圖片直接連結) 仍可供其他潛在用途，
+        // 但主要的分享連結將是 siteToShareUrl。
+        // Facebook 等平台會嘗試從 siteToShareUrl 抓取預覽圖片 (透過 Open Graph meta tags)。
+
+        const shareTextContent = postText ? postText.substring(0, 100) + (postText.length > 100 ? "..." : "") : document.title;
+        const lineShareText = encodeURIComponent(`${shareTextContent}\n${siteToShareUrl}`); // Line 分享訊息中包含網站連結
+        const shares = [
+            // 移除了原本透過 <a> 標籤的 Facebook 按鈕，保留使用 window.open 的版本以求一致性。
+            {
+                name: 'Facebook',
+                action: (event) => {
+                    event.stopPropagation();
+                    showShareButtons();
+                    const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedSiteToShareUrl}`; // 分享 Google Sites 頁面連結
+                    window.open(fbShareUrl, '_blank', 'noopener,noreferrer');
+                },
+                icon: 'ICON/facebook.png'
+            },
+            {
+                name: 'Instagram',
+                action: (event) => {
+                    event.stopPropagation();
+                    showShareButtons();
+                    window.open(`https://www.instagram.com/`, '_blank', 'noopener,noreferrer');
+                },
+                icon: 'ICON/instagram.png', title: '在 Instagram 打開 (需手動上傳圖片)'
+            },
+            { 
+                name: 'Line', 
+                action: (event) => { event.stopPropagation(); showShareButtons(); window.open(`line://msg/text/?${lineShareText}`, '_blank'); }, 
+                icon: 'ICON/line.png'
+            },
+            { 
+                name: '複製網站及圖片連結', 
+                action: (event) => { 
+                    event.stopPropagation(); 
+                    showShareButtons();
+                    const currentClickedButton = event.currentTarget; // 在非同步操作前獲取按鈕元素
+                    const textToCopy = `網站連結：${siteToShareUrl}\n圖片連結：${imageUrl}`;
+                    console.log("Attempting to copy site and image links (share button):", textToCopy);
+
+                    navigator.clipboard.writeText(textToCopy).then(() => { 
+                        console.log("Site and image links copied successfully (share button)!"); 
+                        // const btn = event.currentTarget; // 舊的寫法，在 then 回呼中 event.currentTarget 可能為 null
+                        if (currentClickedButton) { // 使用先前儲存的按鈕元素
+                            const originalIconHTML = currentClickedButton.innerHTML; 
+                            currentClickedButton.innerHTML = '✅ 已複製'; 
+                            setTimeout(() => { 
+                                // 確保按鈕仍然在分享容器中再恢復其內容
+                                if (currentClickedButton.parentNode === document.getElementById('shareButtonsContainer')) {
+                                    currentClickedButton.innerHTML = originalIconHTML; 
+                                }
+                            }, 1500); 
+                        }
+                    }).catch(err => { 
+                        console.error('無法複製連結 (share button): ', err); 
+                        alert('複製連結失敗。'); 
+                    }); 
+                }, 
+                icon: 'ICON/link.png', title: '複製網站及圖片連結'
+            }
+        ];
+        shares.forEach(share => {
+            const element = share.url && !share.action ? document.createElement('a') : document.createElement('button');
+            element.innerHTML = `<img src="${share.icon}" alt="${share.name}" class="share-btn-icon">`; element.title = share.title || `分享到 ${share.name}`;
+            if (share.className) element.classList.add(share.className);
+            if (share.url && !share.action) {
+                element.href = share.url; element.target = '_blank'; element.rel = 'noopener noreferrer';
+                element.addEventListener('click', (e) => { e.stopPropagation(); showShareButtons(); }); 
+            } else if (share.action) { element.addEventListener('click', share.action); }
+            container.appendChild(element);
+        });
+        showShareButtons();
+    }
+    
+    function showModal(clickedImgSrc) {
+        updateImageList(); const index = imageList.indexOf(clickedImgSrc); if (index === -1) return;
+        currentImageIndex = index;
+        const modal = document.getElementById("imageModal"); const modalImg = document.getElementById("modalImage");
+        modalImg.src = imageList[currentImageIndex]; 
+        modal.style.display = "flex"; document.body.style.overflow = 'hidden';
+        let postTextForShare = "";
+        const originalPost = filteredPosts.find(p => getImageUrl(p.image) === modalImg.src);
+        if (originalPost && originalPost.text) postTextForShare = originalPost.text;
+        else {
+            const imgElement = document.querySelector(`.post img[src="${clickedImgSrc}"]`);
+            if (imgElement) { const postElement = imgElement.closest('.post');
+                if (postElement) { const textDiv = postElement.querySelector('.text'); if (textDiv) postTextForShare = textDiv.innerText; }
+            }
+        }
+        generateShareButtons(modalImg.src, postTextForShare);
+        showModalNavButtons(); // 顯示模態框時同時顯示導覽按鈕
+    }
+
+    function hideModal() {
+        const modal = document.getElementById("imageModal"); modal.style.display = "none";
+        document.body.style.overflow = 'auto'; currentImageIndex = -1;
+        clearTimeout(shareButtonsTimeout); hideShareButtons(); // 清理分享按鈕
+        clearTimeout(modalNavButtonsTimeout); hideModalNavButtons(); // 清理並隱藏導覽按鈕
+    }
+    
+    function navigateModalImage(direction) {
+        if (currentImageIndex === -1 || imageList.length === 0) return;
+        currentImageIndex += direction;
+        if (currentImageIndex < 0) currentImageIndex = imageList.length - 1; 
+        else if (currentImageIndex >= imageList.length) currentImageIndex = 0; 
+        const newImgSrc = imageList[currentImageIndex];
+        document.getElementById("modalImage").src = newImgSrc;
+        let postTextForShare = "";
+        const originalPost = filteredPosts.find(p => getImageUrl(p.image) === newImgSrc);
+        if (originalPost && originalPost.text) postTextForShare = originalPost.text;
+        generateShareButtons(newImgSrc, postTextForShare);
+        showModalNavButtons(); // 導覽時重置並顯示導覽按鈕
+    }
+
+    document.getElementById("content").addEventListener("click", function (e) {
+      if (e.target.tagName === "IMG" && e.target.closest(".post")) {
+        if (!e.target.closest('.text[data-copyable]')) showModal(e.target.src);
+      }
+    });
+    
+    const imageModal = document.getElementById('imageModal');
+    const modalCloseButton = document.getElementById('modalCloseBtn'); 
+
+    if (imageModal) { // 確認 imageModal 元素存在
+        imageModal.addEventListener('click', (event) => {
+            if (event.target === imageModal) { // Only close if clicking on the modal background itself
+                 hideModal();
+            } else if (event.target !== document.getElementById('modalImage') && 
+                       event.target !== modalCloseButton && 
+                       !event.target.closest('#shareButtonsContainer') &&
+                       event.target !== document.getElementById('shareButtonsContainer')) {
+                showShareButtons(); // 點擊模態框背景（非圖片、非按鈕）時顯示分享按鈕
+                showModalNavButtons(); // 同時顯示導覽按鈕
+            }
+        });
+        imageModal.addEventListener('mousemove', () => { 
+            if(imageModal.style.display === "flex") {
+                showShareButtons(); showModalNavButtons(); 
+            }
+        });
+        imageModal.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { touchStartX = e.touches[0].clientX; touchEndX = 0; }}, { passive: true });
+        imageModal.addEventListener('touchmove', (e) => { if (e.touches.length === 1) touchEndX = e.touches[0].clientX; }, { passive: true });
+        imageModal.addEventListener('touchend', () => {
+            if (touchEndX === 0 || Math.abs(touchStartX - touchEndX) < swipeThreshold) return;
+            if (touchEndX < touchStartX) navigateModalImage(1); 
+            else if (touchEndX > touchStartX) navigateModalImage(-1);
+            touchStartX = 0; touchEndX = 0;
+        });
+    }
+    const modalImageElement = document.getElementById('modalImage');
+    if (modalImageElement) {
+        modalImageElement.addEventListener('click', () => {
+            showShareButtons(); // 點擊圖片時顯示分享按鈕
+            showModalNavButtons(); // 同時顯示導覽按鈕
+        });
+    }
+
+
+    if (modalCloseButton) { 
+        modalCloseButton.addEventListener('click', hideModal);
+    }
+
+    const modalPrevButton = document.getElementById('modalPrevBtn');
+    const modalNextButton = document.getElementById('modalNextBtn');
+
+    if (modalPrevButton) {
+        modalPrevButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(-1); /* navigateModalImage 內部會調用 showModalNavButtons */ });
+    }
+    if (modalNextButton) {
+        modalNextButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(1); /* navigateModalImage 內部會調用 showModalNavButtons */ });
+    }
+    document.addEventListener("keydown", function (e) {
+      const modalVisible = imageModal.style.display === "flex"; if (!modalVisible) return;
+      if (e.key === "Escape") hideModal();
+      else if (e.key === "ArrowRight") navigateModalImage(1);
+      else if (e.key === "ArrowLeft") navigateModalImage(-1);
+    });
+
+    fetchAndRender();
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+      });
+    }
+  </script>
+
+  <script>
+    // 處理推播通知按鈕
+    const notificationsBtn = document.getElementById('notificationsBtn');
+
+    // 檢查瀏覽器是否支援通知與 Service Worker
+    if ('Notification' in window && 'serviceWorker' in navigator) {
+      // 頁面載入時，根據目前的權限狀態更新按鈕
+      window.addEventListener('load', () => {
+        if (Notification.permission === 'granted') {
+          notificationsBtn.style.display = 'none'; // 已授權，隱藏按鈕
+          registerPeriodicSync(); // 確保背景同步已註冊
+        } else if (Notification.permission === 'denied') {
+          notificationsBtn.style.display = 'none'; // 已拒絕，隱藏按鈕
+        }
+      });
+
+      notificationsBtn.addEventListener('click', async () => {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          console.log('通知權限已取得！');
+          notificationsBtn.style.display = 'none';
+          await registerPeriodicSync();
+        } else {
+          console.log('使用者拒絕了通知權限。');
+        }
+      });
+    } else {
+      notificationsBtn.style.display = 'none'; // 不支援則隱藏
+    }
+
+    async function registerPeriodicSync() {
+      const registration = await navigator.serviceWorker.ready;
+      if ('periodicSync' in registration) {
+        await registration.periodicSync.register('content-check', {
+          minInterval: 12 * 60 * 60 * 1000, // 12 小時
+        });
+        console.log('週期性背景同步已註冊！');
+      }
+    }
   </script>
 </body>
+<footer class="footer">
+        <p>Copyright © 2025 財團法人崇元教育基金會</p>
+    </footer>
 </html>
