@@ -1,0 +1,23 @@
+{
+  "name": "濟公報",
+  "short_name": "濟公報",
+  "description": "崇德佛院濟公報，每日更新，提供搜尋與日期篩選功能。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f9f9f9",
+  "theme_color": "#5a4fcf",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

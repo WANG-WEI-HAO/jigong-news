@@ -2,10 +2,17 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>濟公報(每日7:00更新)</title>
+  <title>濟公報</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#5a4fcf"/>
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
+  <!-- Apple PWA tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="濟公報">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-4EBM386ZCS"></script>
   <script>
@@ -160,11 +167,13 @@
       }
     }
   </style>
+
 </head>
 <body>
-  <h2>濟公報(每日7:00更新)</h2>
+  <h2>濟公報</h2>
 
   <button id="todayBtn" title="今日貼文">今日貼文</button>
+  <button id="notificationsBtn" title="啟用更新通知" style="position: fixed; bottom: 1.5rem; right: 7.5rem; z-index: 999; padding: 0.8em 1.2em; font-size: 1em; background: #ffc107; color: black; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);">🔔 啟用通知</button>
   <button id="themeToggle" style="background: none; border: none; font-size: 1.5em; cursor: pointer; position: fixed; bottom: 1.5rem; left: 1.5rem; z-index: 999;">🌙</button>
 
   <div class="input-row">
@@ -547,6 +556,61 @@
     });
 
     fetchAndRender();
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+      });
+    }
+  </script>
+
+  <script>
+    // 處理推播通知按鈕
+    const notificationsBtn = document.getElementById('notificationsBtn');
+
+    // 檢查瀏覽器是否支援通知與 Service Worker
+    if ('Notification' in window && 'serviceWorker' in navigator) {
+      // 頁面載入時，根據目前的權限狀態更新按鈕
+      window.addEventListener('load', () => {
+        if (Notification.permission === 'granted') {
+          notificationsBtn.style.display = 'none'; // 已授權，隱藏按鈕
+          registerPeriodicSync(); // 確保背景同步已註冊
+        } else if (Notification.permission === 'denied') {
+          notificationsBtn.style.display = 'none'; // 已拒絕，隱藏按鈕
+        }
+      });
+
+      notificationsBtn.addEventListener('click', async () => {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          console.log('通知權限已取得！');
+          notificationsBtn.style.display = 'none';
+          await registerPeriodicSync();
+        } else {
+          console.log('使用者拒絕了通知權限。');
+        }
+      });
+    } else {
+      notificationsBtn.style.display = 'none'; // 不支援則隱藏
+    }
+
+    async function registerPeriodicSync() {
+      const registration = await navigator.serviceWorker.ready;
+      if ('periodicSync' in registration) {
+        await registration.periodicSync.register('content-check', {
+          minInterval: 12 * 60 * 60 * 1000, // 12 小時
+        });
+        console.log('週期性背景同步已註冊！');
+      }
+    }
   </script>
 </body>
 </html>
