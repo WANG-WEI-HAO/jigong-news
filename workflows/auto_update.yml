@@ -1,0 +1,46 @@
+name: Daily Auto Update & Deploy to GitHub Pages
+
+on:
+  schedule:
+    - cron: '50 22 * * *'  # 每天台灣時間早上 6:50（UTC+8）
+  push:
+    branches:
+      - main
+
+jobs:
+  update_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Set up Git config
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run mess.py
+        run: python mess.py
+
+      - name: Commit updated files
+        run: |
+          git add index.html posts.json images/
+          git commit -m "Auto-update content from mess.py" || echo "No changes to commit"
+
+      - name: Push changes to GitHub
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
