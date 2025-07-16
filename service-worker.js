@@ -123,4 +123,102 @@ async function checkForUpdatesAndNotify() {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   event.waitUntil(clients.openWindow('./index.html'));
+=======
+const CACHE_NAME = 'jigong-pwa-cache-v1'; // 更新快取名稱以確保更新
+const urlsToCache = [
+  './',
+  './index.html',
+  './posts.json',
+  'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css',
+  './client.js', // 確保訂閱腳本被快取
+  'https://cdn.jsdelivr.net/npm/flatpickr',
+  'https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
+];
+
+// 安裝 Service Worker
+self.addEventListener('install', (event) => {
+  // 執行安裝步驟
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('Opened cache');
+        return cache.addAll(urlsToCache);
+      })
+  );
+});
+
+// 攔截網路請求並從快取或網路回應
+self.addEventListener('fetch', (event) => {
+  // 對於 posts.json，採用網路優先策略 (Network First)，確保使用者能看到最新內容
+  if (event.request.url.includes('posts.json')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(networkResponse => {
+          // 如果成功從網路取得，就更新快取
+          if (networkResponse && networkResponse.ok) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request)), // 網路失敗時從快取讀取
+    );
+    return;
+  }
+
+  // 其他請求，採用快取優先 (Cache First)
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      // 如果快取中有，就直接回傳
+      return response || fetch(event.request);
+    }),
+  );
+});
+
+// 啟用 Service Worker 時，刪除舊的快取
+self.addEventListener('activate', (event) => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        }),
+      );
+    }),
+  );
+});
+
+// --- 以下是新的推播處理邏輯 ---
+
+// 監聽來自伺服器的 push 事件
+self.addEventListener('push', (event) => {
+  const data = event.data.json();
+  console.log('收到推播訊息:', data);
+
+  const options = {
+    body: data.body,
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    image: data.image,
+    data: {
+      url: data.url, // 將點擊後要前往的 URL 放在 data 中
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// 監聽使用者點擊通知的事件
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  // 開啟 server.js 中 payload 指定的 url
+  event.waitUntil(clients.openWindow(event.notification.data.url || '/'));
+>>>>>>> 2d79b05 (Auto commit on 2025-07-17 05:15:15)
 });
