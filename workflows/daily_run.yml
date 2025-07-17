@@ -15,7 +15,6 @@ jobs:
         # 使用 v4 版本，它通常會自動配置好 GITHUB_TOKEN
         uses: actions/checkout@v4 
         with:
-          # persist-credentials: true 是 v4 的預設，不需要寫
           # fetch-depth: 0 確保獲取所有歷史，以便 git diff 正確工作
           fetch-depth: 0 
 
@@ -27,53 +26,63 @@ jobs:
       - name: 安裝依賴套件 (Install dependencies)
         run: |
           python -m pip install --upgrade pip
-          # 確保你的 requirements.txt 文件包含所有必要的依賴，例如：
-          # telethon
-          # requests
-          # python-dotenv
           pip install -r requirements.txt
 
       - name: 執行 EveryPy 腳本 (Run EveryPy script)
         env:
-          # 從 GitHub Secrets 讀取環境變數。
-          # 這些 Secrets 需要你在 GitHub 倉庫的 "Settings" -> "Secrets and variables" -> "Actions" 中設定
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
           IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
           CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
-          # TELETHON_SESSION 的值應是你的 anon.session 文件的 base64 編碼內容
           TELETHON_SESSION: ${{ secrets.TELETHON_SESSION }} 
         run: |
-          # 在運行腳本前，將 session 檔案的內容從 Secret 解碼並還原為 anon.session
-          # 確保 anon.session 與你的 Telethon 配置相符 (例如，如果 TelethonClient('my_session', ...)
-          # 那麼這裡應該是 my_session.session)
           echo "$TELETHON_SESSION" | base64 --decode > anon.session
-          
-          # 執行你的主要 Python 腳本
           python everypy.py
+
+      # --- START: 新增的診斷步驟 ---
+      - name: 診斷：檢查 posts.json 狀態
+        # 這個步驟無論腳本是否有實際變更，都會執行並打印出檔案狀態
+        run: |
+          echo "======== 診斷 posts.json 狀態 ========"
+          echo "當前工作目錄: $(pwd)" # 打印當前工作目錄，確認路徑正確
+          
+          if [ -f posts.json ]; then # 檢查文件是否存在
+            echo "posts.json 文件已存在。"
+            ls -lh posts.json # 查看文件詳細信息 (大小, 權限)
+            echo "--- posts.json 前 20 行內容 ---"
+            head -n 20 posts.json # 查看文件的前 20 行內容
+            echo "---------------------------------"
+            
+            # 檢查 Git 狀態，看文件是否被修改
+            git status --short # 簡潔顯示文件狀態 (M 表示修改，A 表示添加)
+            
+            # 顯示工作目錄中 posts.json 與上次提交版本的差異
+            echo "--- posts.json 與上次提交版本的差異 ---"
+            git diff posts.json || echo "沒有工作目錄差異 (與上次提交相比)"
+            echo "--------------------------------------"
+            
+            # 顯示暫存區中 posts.json 與上次提交版本的差異
+            echo "--- 暫存區中 posts.json 與上次提交版本的差異 ---"
+            git diff --staged posts.json || echo "沒有暫存區差異"
+            echo "---------------------------------------------"
+          else
+            echo "錯誤：posts.json 文件不存在於倉庫根目錄。"
+          fi
+          echo "======== 診斷結束 ========"
+      # --- END: 新增的診斷步驟 ---
 
       - name: 提交並推送 posts.json 的變更 (Commit and push changes)
         run: |
-          # 設定 git 使用者資訊，這是 Git Commit 所必需的
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # 將所有可能被 everypy.py 修改或生成的變更加入到暫存區
-          # 如果 everypy.py 只修改 posts.json，那就只添加 posts.json
-          # 如果還會生成 index.html 或 images/ 中的圖片，也要一併添加
+          # 將 posts.json 文件添加到 Git 暫存區
           git add posts.json
-          # 如果有其他文件需要提交，例如：
-          # git add index.html
-          # git add images/ 
           
-          # 檢查是否有實際變更被暫存。如果沒有，`git diff --staged --quiet` 返回 0 (成功)
-          # `!` 符號使其在成功時為 False，失敗時為 True
-          # 這樣只有當有變更時，if 語句的條件才為 True
+          # 檢查是否有實際變更被暫存
           if ! git diff --staged --quiet; then
             git commit -m "每日自動更新文章 (Automated daily post update)"
-            # 將變更推送到當前分支 (通常是 main)
-            # actions/checkout@v4 會自動配置好 GITHUB_TOKEN 的寫入權限
             git push 
           else
-            echo "沒有檢測到 'posts.json' (或任何其他已添加的文件) 有變更，跳過提交。"
+            echo "沒有檢測到 'posts.json' 有變更，跳過提交。"
           fi
