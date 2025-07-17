@@ -121,11 +121,18 @@ async def main():
     entity = None
     try:
         print(f"正在嘗試連接 Telegram 並獲取頻道 '{CHANNEL_USERNAME}' 的實體...")
+        
+        # --- 新增：檢查 Telethon 客戶端是否成功登入 (使用了 Session) ---
+        # 嘗試獲取自己的信息，這是確認 Telethon Session 是否成功載入並授權的最佳方式
+        me = await client.get_me() 
+        print(f"Telethon 客戶端已成功登入為：{me.first_name} {me.last_name if me.last_name else ''} (ID: {me.id})")
+        # --- 新增結束 ---
+
         entity = await client.get_entity(CHANNEL_USERNAME)
         print(f"成功獲取頻道 '{CHANNEL_USERNAME}' 實體。")
     except Exception as e:
-        print(f"錯誤：無法獲取頻道 '{CHANNEL_USERNAME}' 的實體: {e}")
-        print("請確保 CHANNEL_USERNAME 正確且你的 Telegram 帳號可以訪問此頻道。")
+        print(f"錯誤：無法連接 Telegram 或獲取頻道 '{CHANNEL_USERNAME}' 的實體: {e}")
+        print("請確保 CHANNEL_USERNAME 正確，你的 Telegram 帳號可以訪問此頻道，且 anon.session 有效。")
         print("如果您遇到 PhoneNumberBannedError，請參考之前的解決方案。")
         print(f"--- 腳本結束於：{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
         return 
@@ -183,7 +190,7 @@ async def main():
         # 檢查這條訊息是否已經在舊數據中存在，並且是否有圖片連結
         # 如果存在且有圖片連結，則跳過圖片下載和上傳，直接使用舊連結
         if current_post_lookup_key in existing_posts_by_key and existing_posts_by_key[current_post_lookup_key].get("image"):
-            img_bb_url = existing_posts_by_key[current_post_lookup_key]["image"]
+            img_bb_url = existing_posts_by_key[current_post_lookup_key]["image"] # <-- 修正這裡！
         elif msg.photo: # 只有當沒有舊連結或舊連結為空，且訊息確實有圖片時，才處理新圖片
             # 圖片命名邏輯
             text_snippet = (msg.text or "").strip()
