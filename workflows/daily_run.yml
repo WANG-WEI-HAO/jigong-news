@@ -1,50 +1,79 @@
-name: 每日執行 EveryPy 腳本
+name: 每日執行 EveryPy 腳本並更新內容
 
 on:
   schedule:
     # 在 UTC 時間 22:50 執行，這對應台灣時間 (UTC+8) 的早上 6:50
-    - cron: '50 22 * * *'
+    # 這裡可以根據你實際需要調整 Cron 表達式
+    - cron: '50 22 * * *' 
   workflow_dispatch: # 允許從 GitHub Actions 頁面手動觸發此流程，方便測試
 
 jobs:
-  run-script:
+  run-and-commit:
     runs-on: ubuntu-latest
     steps:
       - name: 簽出程式碼 (Checkout repository)
-        uses: actions/checkout@v4
+        # 使用 v4 版本，它通常會自動配置好 GITHUB_TOKEN
+        uses: actions/checkout@v4 
+        with:
+          # persist-credentials: true 是 v4 的預設，不需要寫
+          # fetch-depth: 0 確保獲取所有歷史，以便 git diff 正確工作
+          fetch-depth: 0 
 
       - name: 設定 Python 環境 (Set up Python)
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.11' # 保持你 EveryPy 腳本的最佳 Python 版本
 
       - name: 安裝依賴套件 (Install dependencies)
         run: |
           python -m pip install --upgrade pip
+          # 確保你的 requirements.txt 文件包含所有必要的依賴，例如：
+          # telethon
+          # requests
+          # python-dotenv
           pip install -r requirements.txt
 
-      - name: 執行 everypy.py 腳本 (Run EveryPy script)
+      - name: 執行 EveryPy 腳本 (Run EveryPy script)
         env:
-          # 從 GitHub Secrets 讀取環境變數
+          # 從 GitHub Secrets 讀取環境變數。
+          # 這些 Secrets 需要你在 GitHub 倉庫的 "Settings" -> "Secrets and variables" -> "Actions" 中設定
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
           IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
           CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
-          TELETHON_SESSION: ${{ secrets.TELETHON_SESSION }}
+          # TELETHON_SESSION 的值應是你的 anon.session 文件的 base64 編碼內容
+          TELETHON_SESSION: ${{ secrets.TELETHON_SESSION }} 
         run: |
-          # 我們將 session 檔案的內容存在 Secret 中，並在執行前還原它
+          # 在運行腳本前，將 session 檔案的內容從 Secret 解碼並還原為 anon.session
+          # 確保 anon.session 與你的 Telethon 配置相符 (例如，如果 TelethonClient('my_session', ...)
+          # 那麼這裡應該是 my_session.session)
           echo "$TELETHON_SESSION" | base64 --decode > anon.session
+          
+          # 執行你的主要 Python 腳本
           python everypy.py
 
       - name: 提交並推送 posts.json 的變更 (Commit and push changes)
         run: |
-          # 設定 git 使用者資訊
+          # 設定 git 使用者資訊，這是 Git Commit 所必需的
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # 將變更加入到暫存區
+          
+          # 將所有可能被 everypy.py 修改或生成的變更加入到暫存區
+          # 如果 everypy.py 只修改 posts.json，那就只添加 posts.json
+          # 如果還會生成 index.html 或 images/ 中的圖片，也要一併添加
           git add posts.json
-          # 檢查是否有實際變更，如果有的話才執行 commit 和 push
+          # 如果有其他文件需要提交，例如：
+          # git add index.html
+          # git add images/ 
+          
+          # 檢查是否有實際變更被暫存。如果沒有，`git diff --staged --quiet` 返回 0 (成功)
+          # `!` 符號使其在成功時為 False，失敗時為 True
+          # 這樣只有當有變更時，if 語句的條件才為 True
           if ! git diff --staged --quiet; then
             git commit -m "每日自動更新文章 (Automated daily post update)"
-            git push
+            # 將變更推送到當前分支 (通常是 main)
+            # actions/checkout@v4 會自動配置好 GITHUB_TOKEN 的寫入權限
+            git push 
+          else
+            echo "沒有檢測到 'posts.json' (或任何其他已添加的文件) 有變更，跳過提交。"
           fi
