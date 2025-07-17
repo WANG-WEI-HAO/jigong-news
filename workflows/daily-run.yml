@@ -1,44 +1,54 @@
-name: 每日執行 EveryPy 腳本並更新內容
+name: Telegram 每日自動爬蟲與內容更新
 
 on:
   schedule:
+    # 每天 UTC 時間 22:50 執行，這對應台灣時間 (UTC+8) 的早上 6:50
+    # 你可以根據需要調整 cron 表達式。
+    # 更多關於 cron 的資訊: https://crontab.guru/
     - cron: '50 22 * * *' 
-  workflow_dispatch: 
+  
+  workflow_dispatch: # 允許從 GitHub Actions 頁面手動觸發此工作流程，方便測試
 
 jobs:
-  run-and-commit:
-    runs-on: ubuntu-latest
+  # 定義一個名為 'crawl-and-update' 的任務
+  crawl-and-update:
+    runs-on: ubuntu-latest # 在最新的 Ubuntu Linux 環境中運行此任務
+
     steps:
       - name: 簽出程式碼 (Checkout repository)
+        # 使用 actions/checkout@v4 Action，將你的 GitHub 倉庫克隆到 Runner 上
+        # fetch-depth: 0 確保獲取完整的 Git 歷史，以便後續的 git diff 正確工作
         uses: actions/checkout@v4 
         with:
           fetch-depth: 0 
 
       - name: 設定 Python 環境 (Set up Python)
+        # 使用 actions/setup-python@v5 Action，安裝指定版本的 Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13' 
+          python-version: '3.11' # 推薦使用穩定且兼容性好的 Python 版本
 
-      - name: 安裝依賴套件 (Install dependencies)
+      - name: 安裝 Python 依賴套件 (Install Python dependencies)
+        # 升級 pip，然後從 requirements.txt 安裝所有依賴
+        # 請確保 requirements.txt 文件在倉庫根目錄，且內容正確 (例如：telethon>=1.10, requests, python-dotenv)
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 執行 EveryPy 腳本 (Run EveryPy script)
+      - name: 診斷與準備 Telethon Session
+        # 在這裡處理 Telethon Session 文件，並進行診斷
+        # TELETHON_SESSION 的值應是你的 anon.session 文件的 Base64 編碼內容
         env:
-          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
-          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
-          CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
-          TELETHON_SESSION: ${{ secrets.TELETHON_SESSION }} 
+          TELETHON_SESSION: ${{ secrets.TELETHON_SESSION }} # 從 GitHub Secret 讀取
+
         run: |
-          echo "======== 診斷 Telethon Session ========"
-          echo "當前工作目錄: $(pwd)"
-          
-          # 1. 檢查 TELETHON_SESSION Secret 是否被正確傳遞和非空
+          echo "======== 診斷 Telethon Session 狀態 ========"
+          echo "當前工作目錄: $(pwd)" # 打印當前工作目錄
+
+          # 1. 檢查 TELETHON_SESSION Secret 是否被正確傳遞且非空
           if [ -z "$TELETHON_SESSION" ]; then
             echo "錯誤：TELETHON_SESSION Secret 為空或未設置。請檢查 GitHub Secrets。"
-            exit 1 # 如果 Secret 為空，直接失敗
+            exit 1 # 如果 Secret 為空，直接失敗，不繼續執行
           else
             echo "TELETHON_SESSION Secret 已成功讀取 (內容已隱藏)。"
           fi
@@ -51,62 +61,70 @@ jobs:
           if [ -f anon.session ]; then
             echo "anon.session 文件已成功創建。"
             ls -lh anon.session # 顯示文件詳細信息 (大小, 權限)
-            
-            # 獲取文件的頭幾個字節，用於確認其是否看起來像二進制數據
-            echo "--- anon.session 頭 16 個字節 (十六進制表示) ---"
-            hexdump -C -n 16 anon.session || echo "無法使用 hexdump，跳過十六進制檢查。"
+            echo "--- anon.session 頭 16 個字節 (十六進制表示，用於初步確認是二進制文件) ---"
+            hexdump -C -n 16 anon.session || echo "無法使用 hexdump，跳過十六進制檢查。" # hexdump 有助於確認內容是二進制
             echo "-------------------------------------"
-            
-            # 嘗試讀取文件的前幾行（如果它包含任何可讀文本，通常應該沒有）
-            echo "--- anon.session 前 5 行 (如果可讀) ---"
-            head -n 5 anon.session || echo "無法讀取前幾行，或文件是二進制。"
-            echo "---------------------------------"
           else
             echo "錯誤：anon.session 文件未被創建。請檢查 Base64 解碼步驟。"
             exit 1 # 如果文件未創建，直接失敗
           fi
-          
           echo "======== Telethon Session 診斷結束 ========"
-          
-          # 執行你的主要 Python 腳本
-          python everypy.py
 
-      - name: 診斷：檢查 posts.json 狀態 # 此步驟不變
+      - name: 執行 Telegram 爬蟲腳本 (Run Telegram crawler script)
+        # 運行你的主要 Python 腳本 (假設為 everypy.py 或 his0608py.py)
+        # 環境變數會自動注入到這個步驟，供 Python 腳本的 os.getenv() 使用
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+          CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
+        
         run: |
-          echo "======== 診斷 posts.json 狀態 ========"
-          echo "當前工作目錄: $(pwd)"
+          python everypy.py # <--- 請確保你的 Python 腳本名稱是 everypy.py，否則請修改這裡
+
+      - name: 診斷：檢查 posts.json 變更狀態
+        # 腳本執行後，檢查 posts.json 是否已生成或修改
+        run: |
+          echo "======== 診斷 posts.json 變更狀態 ========"
+          echo "當前工作目錄: $(pwd)" 
           
-          if [ -f posts.json ]; then
+          if [ -f posts.json ]; then # 檢查文件是否存在
             echo "posts.json 文件已存在。"
-            ls -lh posts.json
+            ls -lh posts.json # 查看文件詳細信息 (大小, 權限)
             echo "--- posts.json 前 20 行內容 ---"
-            head -n 20 posts.json
+            head -n 20 posts.json # 查看文件的前 20 行內容，確認內容是否是預期的
             echo "---------------------------------"
             
-            git status --short
+            git status --short # 簡潔顯示文件狀態 (M 表示修改，A 表示添加)
             
             echo "--- posts.json 與上次提交版本的差異 ---"
-            git diff posts.json || echo "沒有工作目錄差異 (與上次提交相比)"
+            git diff posts.json || echo "沒有工作目錄差異 (與上次提交相比)" # 顯示工作目錄與上次提交的差異
             echo "--------------------------------------"
             
             echo "--- 暫存區中 posts.json 與上次提交版本的差異 ---"
-            git diff --staged posts.json || echo "沒有暫存區差異"
+            git diff --staged posts.json || echo "沒有暫存區差異" # 顯示暫存區與上次提交的差異
             echo "---------------------------------------------"
           else
-            echo "錯誤：posts.json 文件不存在於倉庫根目錄。"
+            echo "錯誤：posts.json 文件不存在於倉庫根目錄。腳本可能未成功生成文件。"
           fi
           echo "======== 診斷結束 ========"
 
-      - name: 提交並推送 posts.json 的變更 (Commit and push changes) # 此步驟不變
+      - name: 提交並推送更新 (Commit and push changes)
+        # 將 posts.json 的變更提交回 GitHub 倉庫
         run: |
+          # 設定 Git 使用者資訊，這是 Git Commit 所必需的
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
+          # 將 posts.json 文件添加到 Git 暫存區
           git add posts.json
           
+          # 檢查是否有實際變更被暫存。只有有變更時才執行 commit 和 push
+          # `git diff --staged --quiet` 如果沒有變更會返回 0 (成功)
+          # `!` 符號會將成功變為失敗，這樣 if 語句只有在有變更時才執行
           if ! git diff --staged --quiet; then
-            git commit -m "每日自動更新文章 (Automated daily post update)"
-            git push 
+            git commit -m "docs: 自動更新 Telegram 內容與圖片連結" # 使用一個有意義的提交信息
+            git push # 將變更推送到當前分支 (通常是 main)
           else
             echo "沒有檢測到 'posts.json' 有變更，跳過提交。"
           fi
