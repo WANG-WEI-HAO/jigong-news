@@ -2,26 +2,22 @@ name: 每日執行 EveryPy 腳本並更新內容
 
 on:
   schedule:
-    # 在 UTC 時間 22:50 執行，這對應台灣時間 (UTC+8) 的早上 6:50
-    # 這裡可以根據你實際需要調整 Cron 表達式
     - cron: '50 22 * * *' 
-  workflow_dispatch: # 允許從 GitHub Actions 頁面手動觸發此流程，方便測試
+  workflow_dispatch: 
 
 jobs:
   run-and-commit:
     runs-on: ubuntu-latest
     steps:
       - name: 簽出程式碼 (Checkout repository)
-        # 使用 v4 版本，它通常會自動配置好 GITHUB_TOKEN
         uses: actions/checkout@v4 
         with:
-          # fetch-depth: 0 確保獲取所有歷史，以便 git diff 正確工作
           fetch-depth: 0 
 
       - name: 設定 Python 環境 (Set up Python)
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11' # 保持你 EveryPy 腳本的最佳 Python 版本
+          python-version: '3.11' 
 
       - name: 安裝依賴套件 (Install dependencies)
         run: |
@@ -36,32 +32,63 @@ jobs:
           CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
           TELETHON_SESSION: ${{ secrets.TELETHON_SESSION }} 
         run: |
+          echo "======== 診斷 Telethon Session ========"
+          echo "當前工作目錄: $(pwd)"
+          
+          # 1. 檢查 TELETHON_SESSION Secret 是否被正確傳遞和非空
+          if [ -z "$TELETHON_SESSION" ]; then
+            echo "錯誤：TELETHON_SESSION Secret 為空或未設置。請檢查 GitHub Secrets。"
+            exit 1 # 如果 Secret 為空，直接失敗
+          else
+            echo "TELETHON_SESSION Secret 已成功讀取 (內容已隱藏)。"
+          fi
+
+          # 2. 解碼並還原 anon.session 文件
+          echo "正在將 TELETHON_SESSION 解碼到 anon.session 文件..."
           echo "$TELETHON_SESSION" | base64 --decode > anon.session
+          
+          # 3. 檢查 anon.session 文件是否存在和大小
+          if [ -f anon.session ]; then
+            echo "anon.session 文件已成功創建。"
+            ls -lh anon.session # 顯示文件詳細信息 (大小, 權限)
+            
+            # 獲取文件的頭幾個字節，用於確認其是否看起來像二進制數據
+            echo "--- anon.session 頭 16 個字節 (十六進制表示) ---"
+            hexdump -C -n 16 anon.session || echo "無法使用 hexdump，跳過十六進制檢查。"
+            echo "-------------------------------------"
+            
+            # 嘗試讀取文件的前幾行（如果它包含任何可讀文本，通常應該沒有）
+            echo "--- anon.session 前 5 行 (如果可讀) ---"
+            head -n 5 anon.session || echo "無法讀取前幾行，或文件是二進制。"
+            echo "---------------------------------"
+          else
+            echo "錯誤：anon.session 文件未被創建。請檢查 Base64 解碼步驟。"
+            exit 1 # 如果文件未創建，直接失敗
+          fi
+          
+          echo "======== Telethon Session 診斷結束 ========"
+          
+          # 執行你的主要 Python 腳本
           python everypy.py
 
-      # --- START: 新增的診斷步驟 ---
-      - name: 診斷：檢查 posts.json 狀態
-        # 這個步驟無論腳本是否有實際變更，都會執行並打印出檔案狀態
+      - name: 診斷：檢查 posts.json 狀態 # 此步驟不變
         run: |
           echo "======== 診斷 posts.json 狀態 ========"
-          echo "當前工作目錄: $(pwd)" # 打印當前工作目錄，確認路徑正確
+          echo "當前工作目錄: $(pwd)"
           
-          if [ -f posts.json ]; then # 檢查文件是否存在
+          if [ -f posts.json ]; then
             echo "posts.json 文件已存在。"
-            ls -lh posts.json # 查看文件詳細信息 (大小, 權限)
+            ls -lh posts.json
             echo "--- posts.json 前 20 行內容 ---"
-            head -n 20 posts.json # 查看文件的前 20 行內容
+            head -n 20 posts.json
             echo "---------------------------------"
             
-            # 檢查 Git 狀態，看文件是否被修改
-            git status --short # 簡潔顯示文件狀態 (M 表示修改，A 表示添加)
+            git status --short
             
-            # 顯示工作目錄中 posts.json 與上次提交版本的差異
             echo "--- posts.json 與上次提交版本的差異 ---"
             git diff posts.json || echo "沒有工作目錄差異 (與上次提交相比)"
             echo "--------------------------------------"
             
-            # 顯示暫存區中 posts.json 與上次提交版本的差異
             echo "--- 暫存區中 posts.json 與上次提交版本的差異 ---"
             git diff --staged posts.json || echo "沒有暫存區差異"
             echo "---------------------------------------------"
@@ -69,17 +96,14 @@ jobs:
             echo "錯誤：posts.json 文件不存在於倉庫根目錄。"
           fi
           echo "======== 診斷結束 ========"
-      # --- END: 新增的診斷步驟 ---
 
-      - name: 提交並推送 posts.json 的變更 (Commit and push changes)
+      - name: 提交並推送 posts.json 的變更 (Commit and push changes) # 此步驟不變
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # 將 posts.json 文件添加到 Git 暫存區
           git add posts.json
           
-          # 檢查是否有實際變更被暫存
           if ! git diff --staged --quiet; then
             git commit -m "每日自動更新文章 (Automated daily post update)"
             git push 
