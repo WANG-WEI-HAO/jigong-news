@@ -1,10 +1,15 @@
 // jigongbao-pwa/frontend/public/pwa-notifications.js
 
 // !!! 請在這裡替換為你的 Render 後端實際 URL !!!
-const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
+const BACKEND_BASE_URL = 'https://jonggong-news-backend.onrender.com'; // 修正錯字：jigong -> jonggong
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
-const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io'; // <--- 新增：你的 PWA 官方域名
+const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io'; 
+
+// === START: 關鍵修改 ===
+// 允許的本地開發主機名稱列表
+const ALLOWED_DEV_HOSTNAMES = ['localhost', '127.0.0.1'];
+// === END: 關鍵修改 ===
 
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
@@ -40,15 +45,17 @@ function isMacSafari() {
     return navigator.userAgent.includes('Macintosh') && navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
 }
 
-// === 新增：检测当前页面是否运行在官方域名上 ===
+// === START: 關鍵修改 ===
+// 检测当前页面是否运行在官方域名上
 function isOfficialOrigin() {
-    // 在本地開發環境 (localhost) 下，通常也會允許運行，以便調試
-    if (window.location.hostname === 'localhost') {
-        return true; 
+    // 檢查是否為允許的本地開發主機
+    if (ALLOWED_DEV_HOSTNAMES.includes(window.location.hostname)) {
+        return true;
     }
+    // 檢查是否為官方部署的域名
     return window.location.origin === OFFICIAL_PWA_ORIGIN;
 }
-// === 新增结束 ===
+// === END: 關鍵修改 ===
 
 // 辅助函数：将 Base64 字符串转换为 Uint8Array
 function urlBase64ToUint8Array(base64String) {
@@ -256,11 +263,8 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.onclick = null; 
         subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
         subscribeButton.addEventListener('click', () => { 
-            // === START: 關鍵修改 ===
-            // 使用 window.location.href 強制跳轉，這會離開 PWA 並在默認瀏覽器中打開
             const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
             window.location.href = pwaDirectUrl;
-            // === END: 關鍵修改 ===
         });
         return;
     }
