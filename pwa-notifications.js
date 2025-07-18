@@ -46,16 +46,17 @@ function urlBase64ToUint8Array(base64String) {
 // 更新 UI 状态（按钮文本和可用性）
 function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
     if (isSandboxedEnvironment) {
-        subscribeButton.textContent = '➡️ 進入網站開啟通知';
-        subscribeButton.disabled = false; // 用户仍然可以点击这个按钮进行跳转
+        subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
+        subscribeButton.disabled = false;
         subscribeButton.style.backgroundColor = '#6c757d'; // 灰色
         subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
-        // 不绑定订阅逻辑，而是绑定跳转逻辑
         subscribeButton.onclick = () => {
-            alert('點擊「確定」前往濟公報官方網站，以啟用推播通知功能。');
-            window.open(window.location.href, '_blank'); // 打开当前页面（也就是你的GitHub Pages PWA）到新标签页
+            // 获取当前页面的 URL，然后添加或替换 openExternalBrowser 参数
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('openExternalBrowser', '1'); // 添加或更新参数
+            window.open(currentUrl.toString(), '_blank'); // 打开带参数的新链接到新标签页
         };
-        return; // 沙箱环境下直接返回，不执行后续逻辑
+        return;
     }
 
     // --- 正常环境下的逻辑 ---
