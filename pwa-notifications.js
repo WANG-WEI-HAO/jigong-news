@@ -25,15 +25,19 @@ function isSandboxed() {
     return isInIframe(); // 简化判断：如果在 iframe 里就认为是沙箱
 }
 
+// === 新增：检测是否为 Apple 设备和浏览器 ===
 // 检测是否为 iOS 设备 (iPhone/iPad/iPod)
 function isAppleMobileDevice() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    // navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad') || navigator.userAgent.includes('iPod')
+    // 更好的检测方法是检查 'ontouchstart' 和 'userAgent' 排除安卓平板
+    return /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
 }
 
 // 检测是否为 macOS 上的 Safari 浏览器
 function isMacSafari() {
     return navigator.userAgent.includes('Macintosh') && navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
 }
+// === 新增结束 ===
 
 // 辅助函数：将 Base64 字符串转换为 Uint8Array
 function urlBase64ToUint8Array(base64String) {
@@ -51,7 +55,8 @@ function urlBase64ToUint8Array(base64String) {
 
 // --- JS 动态安装提示弹窗逻辑 ---
 // 这个函数现在负责创建、显示和管理弹窗
-function showCustomInstallPrompt(type = 'default') { // type: 'default' (for chrome-like) or 'ios' (for iOS instructions)
+// type: 'default' (for chrome-like) or 'ios' (for iOS/macOS Safari instructions)
+function showCustomInstallPrompt(type = 'default') { 
     let promptOverlay = document.getElementById('customInstallPromptOverlay');
 
     if (!promptOverlay) {
@@ -93,7 +98,7 @@ function showCustomInstallPrompt(type = 'default') { // type: 'default' (for chr
             transform: scale(0.9); /* 初始缩小，用于放大效果 */
             transition: transform 0.3s ease-in-out; /* 放大动画 */
             position: relative; /* 允许取消按钮定位 */
-            display: flex; /* 内部内容也使用 flex */
+            display: flex; /* 內部內容也使用 flex */
             flex-direction: column;
             align-items: center;
             gap: 15px; /* 间距 */
@@ -109,23 +114,30 @@ function showCustomInstallPrompt(type = 'default') { // type: 'default' (for chr
 
         // 绑定点击遮罩外部隐藏弹窗
         promptOverlay.addEventListener('click', (e) => {
-            if (e.target === promptOverlay) { // 确保点击的是遮罩本身，而不是内部弹窗
+            if (e.target === promptOverlay) { // 確保點擊的是遮罩本身，而不是內部彈窗
                 hideInstallPrompt();
             }
         });
     }
 
     const promptContentDiv = document.getElementById('customInstallPrompt');
-    if (!promptContentDiv) return; // 确保弹窗容器存在
+    if (!promptContentDiv) return; // 確保彈窗容器存在
 
     // 根据类型填充内容
     let contentHTML = '';
     let buttonsHTML = '';
 
     if (type === 'ios') {
+        // iOS/macOS Safari 的特殊提示
         contentHTML = `
-            <p style="margin: 0;">如何在 iOS 裝置上安裝濟公報應用程式？</p>
-            <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">請點擊瀏覽器底部的 <strong style="font-size:1.2em;">分享按鈕</strong> (<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Share_iOS_14_icon.svg/50px-Share_iOS_14_icon.svg.png" alt="分享圖示" style="height: 1.2em; vertical-align: middle; filter: invert(1);">) ，然後選擇「**加入主畫面**」。</p>
+            <p style="margin: 0; font-weight: bold;">在您的 Apple 裝置上安裝濟公報應用程式</p>
+            <p style="margin: 0; font-size: 0.95em; opacity: 0.9;">請按照以下步驟，將本網站添加到主畫面：</p>
+            <ol style="text-align: left; padding-left: 25px; margin: 10px 0; font-size: 0.9em; line-height: 1.4;">
+                <li>1. 點擊瀏覽器底部的 <strong style="font-size:1.1em;">分享按鈕</strong> (<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Share_iOS_14_icon.svg/50px-Share_iOS_14_icon.svg.png" alt="分享圖示" style="height: 1.2em; vertical-align: middle; filter: invert(1);">)</li>
+                <li>2. 選擇「<strong>加入主畫面</strong>」選項</li>
+                <li>3. 確認添加，即可像應用程式一樣使用！</li>
+            </ol>
+            <p style="margin: 0; font-size: 0.85em; opacity: 0.7;">（若無此選項，請更新您的 iOS 系統或嘗試其他瀏覽器）</p>
         `;
         // iOS 提示不需要“立即安裝”按钮，只有关闭
     } else { // default for Android/Desktop Chrome/Edge
@@ -187,7 +199,7 @@ function showCustomInstallPrompt(type = 'default') { // type: 'default' (for chr
     if (customCancelInstallButton) {
         customCancelInstallButton.addEventListener('click', () => {
             hideInstallPrompt(); // 隐藏自定义提示
-            if (type !== 'ios') { // 只有非 iOS 提示才清除 deferredPrompt
+            if (type !== 'ios') { // 只有非 iOS 提示才清除 deferredPrompt，因为 iOS/macOS 提示不依赖它
                 deferredPrompt = null; 
             }
         });
@@ -211,16 +223,16 @@ function hideInstallPrompt() {
         // 动画结束后移除元素，避免DOM堆积
         promptOverlay.addEventListener('transitionend', function handler() {
             promptOverlay.style.display = 'none';
-            // promptOverlay.remove(); // 如果选择移除，下次需要重新创建
+            // promptOverlay.remove(); // 如果選擇移除，下次需要重新創建
             promptOverlay.removeEventListener('transitionend', handler); 
-        }, { once: true }); // 使用 { once: true } 确保事件监听器只执行一次
+        }, { once: true }); // 使用 { once: true } 確保事件監聽器只執行一次
     }
 }
 
 
 // --- updateNotificationUI, checkSubscriptionAndUI 等函数保持不变 ---
 
-// 更新 UI 状态（按钮文本和可用性）
+// 更新 UI 狀態（按鈕文本和可用性）
 function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
     if (isSandboxedEnvironment) {
         subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
@@ -435,17 +447,17 @@ async function handleSubscribeButtonClick() {
     }
 }
 
-// --- 初始化通知相关的功能 (Service Worker 注册等) ---
-// 将 Service Worker 注册和初始检查集中到这个函数
+// --- 初始化通知相關的功能 (Service Worker 註冊等) ---
+// 將 Service Worker 註冊和初始檢查集中到這個函數
 function initializeNotificationFeatures() {
-    // 如果是沙箱环境，直接处理按钮状态并返回
+    // 如果是沙箱環境，直接處理按鈕狀態並返回
     if (isSandboxed()) {
         updateNotificationUI(false, 'default', true);
         console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
         return;
     }
 
-    // 正常环境下的 Service Worker 注册
+    // 正常環境下的 Service Worker 註冊
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./service-worker.js')
             .then(function(registration) {
@@ -487,38 +499,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // PWA 安裝提示邏輯
-    // 優先檢查是否已安裝或在受限環境，然後再判斷設備類型
+    // 優先檢查是否已安裝或在受限環境
     if (isPWAInstalled() || isSandboxed()) { 
         if(isPWAInstalled()){
              console.log('PWA 已安裝，不顯示安裝提示。');
         }
-        // 如果是沙箱環境，updateNotificationUI 已處理按鈕狀態
-    } else if (isAppleMobileDevice() || isMacSafari()) {
-        // 對於 iOS/iPadOS 或 macOS Safari，不依賴 beforeinstallprompt，直接顯示自定義安裝指南
-        console.log('偵測到 Apple 裝置，顯示安裝指南。');
-        // 可以設定一個延遲或在用戶滾動時觸發，這裡為簡潔直接觸發
-        // 首次訪問或在特定條件下顯示，避免過於頻繁
-        const hasSeenInstallPrompt = localStorage.getItem('hasSeenAppleInstallPrompt');
-        if (!hasSeenInstallPrompt) {
-            setTimeout(() => {
-                showCustomInstallPrompt('ios');
-                localStorage.setItem('hasSeenAppleInstallPrompt', 'true'); // 設置標記，下次不再自動彈出
-            }, 3000); // 延遲3秒顯示iOS/macOS安裝提示
-        }
     } else {
-        // 其他瀏覽器 (主要是 Chromium based)，監聽 beforeinstallprompt 事件
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            console.log('beforeinstallprompt 事件已保存。');
-            showCustomInstallPrompt('default'); // 顯示自定義安裝提示 (用於 Android/Desktop Chrome/Edge)
-        });
+        // 判斷設備類型以提供不同安裝提示
+        if (isAppleMobileDevice() || isMacSafari()) {
+            console.log('偵測到 Apple 裝置，準備顯示安裝指南。');
+            // 使用 localStorage 控制顯示頻率，避免過度打擾用戶
+            const hasSeenInstallPrompt = localStorage.getItem('hasSeenAppleInstallPrompt');
+            if (!hasSeenInstallPrompt) {
+                setTimeout(() => {
+                    showCustomInstallPrompt('ios');
+                    localStorage.setItem('hasSeenAppleInstallPrompt', 'true'); // 設置標記，下次不再自動彈出
+                }, 3000); // 延遲3秒顯示iOS/macOS安裝提示，讓用戶先看到內容
+            }
+        } else {
+            // 其他瀏覽器 (主要是 Chromium based)，監聽 beforeinstallprompt 事件
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault(); // 阻止瀏覽器默認的安裝提示
+                deferredPrompt = e;
+                console.log('beforeinstallprompt 事件已保存。');
+                showCustomInstallPrompt('default'); // 顯示自定義安裝提示 (用於 Android/Desktop Chrome/Edge)
+            });
 
-        window.addEventListener('appinstalled', () => {
-            console.log('PWA 已成功安裝！');
-            hideInstallPrompt();
-            deferredPrompt = null;
-            checkSubscriptionAndUI(); // PWA 安裝後，可能需要重新檢查通知功能
-        });
+            window.addEventListener('appinstalled', () => {
+                console.log('PWA 已成功安裝！');
+                hideInstallPrompt();
+                deferredPrompt = null;
+                checkSubscriptionAndUI(); // PWA 安裝後，可能需要重新檢查通知功能
+            });
+        }
     }
 });
