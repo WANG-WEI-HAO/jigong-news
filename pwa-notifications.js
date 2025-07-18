@@ -30,20 +30,6 @@ function isSandboxed() {
 }
 
 // 辅助函数：将 Base64 字符串转换为 Uint8Array
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
-
-// 更新 UI 状态（按钮文本和可用性）
 function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
     if (isSandboxedEnvironment) {
         subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
@@ -51,29 +37,15 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.style.backgroundColor = '#6c757d'; // 灰色
         subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
         
+        // --- 核心修改在这里 ---
         subscribeButton.onclick = () => {
-            const confirmRedirect = confirm('您正在受限環境中。點擊「確定」前往濟公報官方網站，以啟用推播通知功能。');
-            
-            if (confirmRedirect) {
-                const pwaBaseUrl = "https://wang-wei-hao.github.io/jigong-news/"; // 你的PWA根URL
-                const targetUrl = new URL(pwaBaseUrl);
-                targetUrl.searchParams.set('openExternalBrowser', '1'); // 添加或更新参数
-
-                // --- 核心修改：尝试 Android Intent URL ---
-                if (navigator.userAgent.includes("Android") && navigator.userAgent.includes("Chrome")) {
-                    // 构建 Android Intent URL
-                    const androidIntentUrl = `intent://${targetUrl.host}${targetUrl.pathname}${targetUrl.search}#Intent;scheme=${targetUrl.protocol.replace(':', '')};package=com.android.chrome;end`;
-                    window.location.href = androidIntentUrl; // 尝试直接导航到 Intent URL
-                } else {
-                    // 对于其他平台或非Chrome浏览器，退回到 window.open
-                    window.open(targetUrl.toString(), '_blank'); 
-                }
-                // --- 修改结束 ---
-            }
+            // 直接指定你的 PWA 的根 URL，加上参数
+            const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
+            window.open(pwaDirectUrl, '_blank');
         };
+        // --- 修改结束 ---
         return;
     }
-
     // --- 正常环境下的逻辑 ---
     if (permissionState === 'denied') {
         subscribeButton.textContent = '🚫 通知已拒絕';
