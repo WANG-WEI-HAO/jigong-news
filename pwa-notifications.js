@@ -49,21 +49,28 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
         subscribeButton.disabled = false;
         subscribeButton.style.backgroundColor = '#6c757d'; // 灰色
-        subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以開啟通知功能。';
+        subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
         
-        // --- 修改开始 ---
         subscribeButton.onclick = () => {
-            // 在这里添加弹窗确认
-            const confirmRedirect = confirm('前往濟公報官方網站，以開啟推播通知功能。');
+            const confirmRedirect = confirm('您正在受限環境中。點擊「確定」前往濟公報官方網站，以啟用推播通知功能。');
             
-            if (confirmRedirect) { // 如果用户点击了“确定”
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('openExternalBrowser', '1'); // 添加或更新参数
-                window.open(currentUrl.toString(), '_blank'); // 打开带参数的新链接到新标签页
+            if (confirmRedirect) {
+                const pwaBaseUrl = "https://wang-wei-hao.github.io/jigong-news/"; // 你的PWA根URL
+                const targetUrl = new URL(pwaBaseUrl);
+                targetUrl.searchParams.set('openExternalBrowser', '1'); // 添加或更新参数
+
+                // --- 核心修改：尝试 Android Intent URL ---
+                if (navigator.userAgent.includes("Android") && navigator.userAgent.includes("Chrome")) {
+                    // 构建 Android Intent URL
+                    const androidIntentUrl = `intent://${targetUrl.host}${targetUrl.pathname}${targetUrl.search}#Intent;scheme=${targetUrl.protocol.replace(':', '')};package=com.android.chrome;end`;
+                    window.location.href = androidIntentUrl; // 尝试直接导航到 Intent URL
+                } else {
+                    // 对于其他平台或非Chrome浏览器，退回到 window.open
+                    window.open(targetUrl.toString(), '_blank'); 
+                }
+                // --- 修改结束 ---
             }
-            // 如果用户点击了“取消”，则不做任何事情
         };
-        // --- 修改结束 ---
         return;
     }
 
