@@ -256,6 +256,159 @@ function showCustomInstallPrompt(type = 'default') {
     }, 50); 
 }
 
+// 新增的客製化彈跳視窗函數，用於確認是否分享網址到瀏覽器打開
+function showCustomBrowserPrompt() {
+    let promptOverlay = document.getElementById('customBrowserPromptOverlay');
+
+    if (!promptOverlay) {
+        promptOverlay = document.createElement('div');
+        promptOverlay.id = 'customBrowserPromptOverlay';
+        promptOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            backdrop-filter: blur(5px);
+        `;
+        document.body.appendChild(promptOverlay);
+
+        const promptDiv = document.createElement('div');
+        promptDiv.id = 'customBrowserPrompt';
+        promptDiv.style.cssText = `
+            background-color: #333;
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            font-size: 1.1em;
+            text-align: center;
+            width: clamp(300px, 90vw, 500px);
+            box-sizing: border-box;
+            transform: scale(0.9);
+            transition: transform 0.3s ease-in-out;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        `;
+
+        if (document.body.classList.contains('dark-mode')) {
+            promptDiv.style.backgroundColor = '#2c2c2c';
+            promptDiv.style.boxShadow = '0 6px 20px rgba(255, 255, 255, 0.1)';
+        }
+        
+        promptOverlay.appendChild(promptDiv);
+
+        promptOverlay.addEventListener('click', (e) => {
+            if (e.target === promptOverlay) {
+                hideCustomBrowserPrompt();
+            }
+        });
+    }
+
+    const promptContentDiv = document.getElementById('customBrowserPrompt');
+    if (!promptContentDiv) return;
+
+    promptContentDiv.innerHTML = `
+        <p style="margin: 0; font-weight: bold;">您正在應用程式模式下。</p>
+        <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">通知功能需要在瀏覽器中設定。</p>
+        <p style="margin: 0; font-size: 1.0em;">是否要在瀏覽器中開啟濟公報？</p>
+        <div style="display: flex; gap: 15px; margin-top: 10px;">
+            <button id="confirmOpenBrowserButton" style="
+                background-color: #28a745; /* Green for confirm */
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 1em;
+                transition: background-color 0.2s, transform 0.1s;
+                min-width: 100px;
+            ">確認</button>
+            <button id="cancelOpenBrowserButton" style="
+                background-color: #dc3545; /* Red for cancel */
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 1em;
+                transition: background-color 0.2s, transform 0.1s;
+                min-width: 100px;
+            ">取消</button>
+        </div>
+        <button id="closeBrowserPromptButton" style="
+            background-color: transparent;
+            color: #bbb;
+            font-size: 1.5em; 
+            position: absolute;
+            top: 8px; 
+            right: 12px; 
+            padding: 0 5px;
+            line-height: 1;
+            border: none;
+            cursor: pointer;
+            transition: color 0.2s;
+        ">×</button>
+    `;
+
+    const confirmOpenBrowserButton = document.getElementById('confirmOpenBrowserButton');
+    const cancelOpenBrowserButton = document.getElementById('cancelOpenBrowserButton');
+    const closeBrowserPromptButton = document.getElementById('closeBrowserPromptButton');
+
+    if (confirmOpenBrowserButton) {
+        confirmOpenBrowserButton.addEventListener('click', () => {
+            hideCustomBrowserPrompt();
+            // 自動將瀏覽器導入濟公報網址
+            window.open(OFFICIAL_PWA_ORIGIN, '_blank');
+        });
+    }
+
+    if (cancelOpenBrowserButton) {
+        cancelOpenBrowserButton.addEventListener('click', () => {
+            hideCustomBrowserPrompt();
+        });
+    }
+
+    if (closeBrowserPromptButton) {
+        closeBrowserPromptButton.addEventListener('click', () => {
+            hideCustomBrowserPrompt();
+        });
+    }
+
+    promptOverlay.style.display = 'flex';
+    setTimeout(() => {
+        promptOverlay.style.opacity = '1';
+        promptContentDiv.style.transform = 'scale(1)';
+    }, 50);
+}
+
+// 隱藏客製化瀏覽器彈跳視窗
+function hideCustomBrowserPrompt() {
+    const promptOverlay = document.getElementById('customBrowserPromptOverlay');
+    const promptDiv = document.getElementById('customBrowserPrompt');
+    if (promptOverlay && promptDiv) {
+        promptOverlay.style.opacity = '0';
+        promptDiv.style.transform = 'scale(0.9)';
+        
+        promptOverlay.addEventListener('transitionend', function handler() {
+            promptOverlay.style.display = 'none';
+            promptOverlay.removeEventListener('transitionend', handler);
+        }, { once: true });
+    }
+}
+
+
 function hideInstallPrompt() {
     const promptOverlay = document.getElementById('customInstallPromptOverlay');
     const promptDiv = document.getElementById('customInstallPrompt');
@@ -286,24 +439,17 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
     }
 
     if (isSandboxedEnvironment) {
-        subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
+        subscribeButton.textContent = '➡️ 在瀏覽器中開啟濟公報';
         subscribeButton.disabled = false;
         subscribeButton.style.backgroundColor = '#6c757d'; 
-        subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
+        subscribeButton.title = '您正在應用程式模式中。請點擊前往瀏覽器開啟濟公報。';
         
         subscribeButton.onclick = null; 
         subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
         
         // === START: 關鍵修改 ===
         subscribeButton.addEventListener('click', () => { 
-            // 彈出確認對話框
-            const confirmOpen = confirm("您正在獨立應用程式模式下。通知功能需要在瀏覽器中設定。\n\n是否要在瀏覽器中開啟濟公報？");
-            
-            if (confirmOpen) {
-                // 如果用戶確認，則在系統瀏覽器中打開新標籤頁
-                const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
-                window.open(pwaDirectUrl, '_blank');
-            }
+            showCustomBrowserPrompt(); // 調用新的客製化彈跳視窗
         });
         // === END: 關鍵修改 ===
         return;
