@@ -4,7 +4,7 @@
 const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com'; // 修正錯字：jonggong -> jigong
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
-const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io/jigong-news/'; 
+const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io'; 
 
 // === START: 關鍵修改 ===
 // 允許的本地開發主機名稱列表
@@ -263,8 +263,11 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.onclick = null; 
         subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
         subscribeButton.addEventListener('click', () => { 
+            // === START: 關鍵修改 ===
+            // 使用 window.open(..., '_blank') 來在系統瀏覽器中打開新標籤頁
             const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
-            window.location.href = pwaDirectUrl;
+            window.open(pwaDirectUrl, '_blank');
+            // === END: 關鍵修改 ===
         });
         return;
     }
