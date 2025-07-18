@@ -4,7 +4,7 @@
 const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
-const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io';
+const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io'; // <--- 新增：你的 PWA 官方域名
 
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
@@ -25,7 +25,9 @@ function isInIframe() {
 }
 
 function isSandboxed() {
-    return isInIframe(); // 简化判断：如果在 iframe 里就认为是沙箱
+    // 這裡我們擴展一下沙箱的定義：如果在 iframe 裡，或者在已安裝的 PWA 裡，
+    // 對於通知功能來說，都算是需要「跳轉到瀏覽器」的受限環境。
+    return isInIframe() || isPWAInstalled();
 }
 
 // 检测是否为 Apple 设备 (iPhone/iPad/iPod)
@@ -38,7 +40,7 @@ function isMacSafari() {
     return navigator.userAgent.includes('Macintosh') && navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
 }
 
-// 检测当前页面是否运行在官方域名上
+// === 新增：检测当前页面是否运行在官方域名上 ===
 function isOfficialOrigin() {
     // 在本地開發環境 (localhost) 下，通常也會允許運行，以便調試
     if (window.location.hostname === 'localhost') {
@@ -46,6 +48,7 @@ function isOfficialOrigin() {
     }
     return window.location.origin === OFFICIAL_PWA_ORIGIN;
 }
+// === 新增结束 ===
 
 // 辅助函数：将 Base64 字符串转换为 Uint8Array
 function urlBase64ToUint8Array(base64String) {
@@ -63,6 +66,7 @@ function urlBase64ToUint8Array(base64String) {
 
 // --- JS 动态安装提示弹窗逻辑 ---
 function showCustomInstallPrompt(type = 'default') { 
+    // 只有在官方域名下才显示安装提示
     if (!isOfficialOrigin()) {
         console.warn('非官方網域，不顯示安裝提示。');
         return;
@@ -229,42 +233,38 @@ function hideInstallPrompt() {
 }
 
 // 更新 UI 狀態（按鈕文本和可用性）
-function updateNotificationUI(isSubscribed, permissionState) {
-    if (!subscribeButton) return;
-
-    // === START: 關鍵修改 ===
-    // 將 isSandboxed 和 isPWAInstalled 結合，判斷是否處於受限環境（需要跳轉）
-    const isRestrictedEnvironment = isSandboxed() || isPWAInstalled();
-
+function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
     if (!isOfficialOrigin()) {
-        subscribeButton.textContent = '❌ 非官方來源';
-        subscribeButton.disabled = true;
-        subscribeButton.style.backgroundColor = '#6c757d'; 
-        subscribeButton.title = '通知和安裝功能僅限於官方網站提供。';
-        subscribeButton.onclick = null; 
-        subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+        if (subscribeButton) { 
+            subscribeButton.textContent = '❌ 非官方來源';
+            subscribeButton.disabled = true;
+            subscribeButton.style.backgroundColor = '#6c757d'; 
+            subscribeButton.title = '通知和安裝功能僅限於官方網站提供。';
+            subscribeButton.onclick = null; 
+            subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+        }
         console.warn('PWA 運行於非官方來源，通知功能已禁用。');
         return; 
     }
 
-    if (isRestrictedEnvironment) {
+    if (isSandboxedEnvironment) {
         subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
         subscribeButton.disabled = false;
         subscribeButton.style.backgroundColor = '#6c757d'; 
-        subscribeButton.title = '您正在應用程式或受限環境中。請點擊前往瀏覽器以啟用通知功能。';
+        subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
         
         subscribeButton.onclick = null; 
         subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
         subscribeButton.addEventListener('click', () => { 
-            // 構建 URL，確保是你的 PWA 部署的絕對路徑
-            const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/"; 
-            // 使用 window.location.href 來強制在系統瀏覽器中打開
+            // === START: 關鍵修改 ===
+            // 使用 window.location.href 強制跳轉，這會離開 PWA 並在默認瀏覽器中打開
+            const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
             window.location.href = pwaDirectUrl;
+            // === END: 關鍵修改 ===
         });
         return;
     }
-    // === END: 關鍵修改 ===
-
+    
     subscribeButton.onclick = null; 
     subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
     subscribeButton.addEventListener('click', handleSubscribeButtonClick);
@@ -289,12 +289,16 @@ function updateNotificationUI(isSubscribed, permissionState) {
 
 async function checkSubscriptionAndUI() {
     if (!isOfficialOrigin()) {
-        updateNotificationUI(false, 'default');
+        updateNotificationUI(false, 'default', false); 
         return;
     }
     
-    // 現在 updateNotificationUI 內部會處理 isPWAInstalled 和 isSandboxed
-    // 所以這裡不需要單獨檢查它們了
+    if (isSandboxed()) {
+        updateNotificationUI(false, 'default', true);
+        console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
+        return;
+    }
+
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         updateNotificationUI(false, 'not-supported');
         subscribeButton.textContent = '瀏覽器不支持通知';
@@ -306,7 +310,7 @@ async function checkSubscriptionAndUI() {
         swRegistration = await navigator.serviceWorker.ready;
         const subscription = await swRegistration.pushManager.getSubscription();
         const permissionState = Notification.permission;
-        updateNotificationUI(!!subscription, permissionState); 
+        updateNotificationUI(!!subscription, permissionState, isSandboxed()); 
     } catch (error) {
         console.error('檢查訂閱狀態時出錯或Service Worker未準備好:', error);
         updateNotificationUI(false, 'error'); 
@@ -470,31 +474,34 @@ async function handleSubscribeButtonClick() {
 // --- 初始化通知相關的功能 (Service Worker 註冊等) ---
 function initializeNotificationFeatures() {
     if (!isOfficialOrigin()) {
-        updateNotificationUI(false, 'default');
-        return;
-    }
-    
-    // updateNotificationUI 內部會處理 isPWAInstalled 和 isSandboxed
-    // 所以這裡不需要單獨檢查它們了
-    if (!('serviceWorker' in navigator)) {
-        updateNotificationUI(false, 'not-supported');
+        updateNotificationUI(false, 'default', false); 
         return;
     }
 
-    navigator.serviceWorker.register('./service-worker.js')
-        .then(function(registration) {
-            console.log('Service Worker 註冊成功，作用域: ', registration.scope);
-            swRegistration = registration;
-            checkSubscriptionAndUI(); // 註冊後立即檢查訂閱狀態並更新 UI
-        })
-        .catch(function(error) {
-            console.error('Service Worker 註冊失敗:', error);
-            updateNotificationUI(false, 'registration-failed');
-            subscribeButton.textContent = '通知服務無法啟動';
-            subscribeButton.disabled = true;
-            subscribeButton.style.backgroundColor = '#dc3545';
-            subscribeButton.title = 'Service Worker 註冊失敗，推播功能不可用。';
-        });
+    if (isSandboxed()) {
+        updateNotificationUI(false, 'default', true);
+        console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
+        return;
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(function(registration) {
+                console.log('Service Worker 註冊成功，作用域: ', registration.scope);
+                swRegistration = registration;
+                checkSubscriptionAndUI(); 
+            })
+            .catch(function(error) {
+                console.error('Service Worker 註冊失敗:', error);
+                updateNotificationUI(false, 'registration-failed');
+                subscribeButton.textContent = '通知服務無法啟動';
+                subscribeButton.disabled = true;
+                subscribeButton.style.backgroundColor = '#dc3545';
+                subscribeButton.title = 'Service Worker 註冊失敗，推播功能不可用。';
+            });
+    } else {
+        updateNotificationUI(false, 'not-supported');
+    }
 
     if ('permissions' in navigator && 'PushManager' in window) {
         navigator.permissions.query({ name: 'notifications' }).then(notificationPerm => {
@@ -508,32 +515,27 @@ function initializeNotificationFeatures() {
 
 // --- DOMContentLoaded 主入口 ---
 document.addEventListener('DOMContentLoaded', () => {
-    // 確保 subscribeButton 元素存在才初始化通知功能
     if (subscribeButton) {
-        initializeNotificationFeatures(); // 調用初始化通知功能的函數
+        initializeNotificationFeatures(); 
     } else {
         console.error('未能找到 ID 為 subscribe-btn 的按鈕。');
     }
 
-    // PWA 安裝提示邏輯
-    // 優先檢查是否已安裝或在受限環境，以及是否為官方來源
     if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) { 
         if(isPWAInstalled()){
              console.log('PWA 已安裝，不顯示安裝提示。');
         }
     } else {
-        // 判斷設備類型以提供不同安裝提示
         if (isAppleMobileDevice() || isMacSafari()) {
             console.log('偵測到 Apple 裝置，準備顯示安裝指南。');
             const hasSeenInstallPrompt = localStorage.getItem('hasSeenAppleInstallPrompt');
             if (!hasSeenInstallPrompt) {
                 setTimeout(() => {
                     showCustomInstallPrompt('ios');
-                    localStorage.setItem('hasSeenAppleInstallPrompt', 'true'); // 設置標記，下次不再自動彈出
+                    localStorage.setItem('hasSeenAppleInstallPrompt', 'true'); 
                 }, 3000); 
             }
         } else {
-            // 其他瀏覽器 (主要是 Chromium based)，監聽 beforeinstallprompt 事件
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault(); 
                 deferredPrompt = e;
