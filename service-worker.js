@@ -1,35 +1,83 @@
-const CACHE_NAME = 'jigong-paper-cache-v1';
+// frontend/public/service-worker.js
+
+const CACHE_NAME = 'jigong-pwa-cache-v2'; // 如果内容有大变化，可以更新版本号以强制更新缓存
 const urlsToCache = [
   './',
   './index.html',
   './posts.json',
+  './pwa-notifications.js', // 更新为新的合并后的 JS 文件名
   'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css',
   'https://cdn.jsdelivr.net/npm/flatpickr',
-  'https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js',
+  './zh-tw.js', 
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  // 确保你的分享图标也缓存
+  './ICON/facebook.png',
+  './ICON/instagram.png',
+  './ICON/line.png',
+  './ICON/link.png'
 ];
 
-// 安裝 Service Worker
 self.addEventListener('install', event => {
-  // 執行安裝步驟
+  console.log('[Service Worker] Installing Service Worker ...', event);
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Opened cache');
+        console.log('[Service Worker] Opened cache and added all URLs.');
         return cache.addAll(urlsToCache);
+      })
+      .then(() => {
+        console.log('[Service Worker] Install complete. Skipping waiting...');
+        self.skipWaiting(); // 确保 Service Worker 立即激活
+      })
+      .catch(error => {
+        console.error('[Service Worker] Installation failed:', error);
+        throw error; // 抛出错误以防止 Service Worker 注册成功但安装失败
       })
   );
 });
 
-// 攔截網路請求並從快取或網路回應
+self.addEventListener('activate', event => {
+  console.log('[Service Worker] Activating Service Worker ....', event);
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      console.log('[Service Worker] Found caches:', cacheNames);
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log(`[Service Worker] Deleting old cache: ${cacheName}`);
+            return caches.delete(cacheName);
+          } else {
+            console.log(`[Service Worker] Keeping cache: ${cacheName}`);
+          }
+        })
+      );
+    })
+    .then(() => {
+      console.log('[Service Worker] Old caches cleaned up. Claiming clients...');
+      return self.clients.claim(); // 确保 Service Worker 控制所有客户端
+    })
+    .then(() => {
+      console.log('[Service Worker] Activation successful and clients claimed.');
+    })
+    .catch(error => {
+      console.error('[Service Worker] Activation failed:', error);
+      // 可以在这里显示一个通知，通知用户 Service Worker 激活失败
+      // self.registration.showNotification('Service Worker Error', {
+      //   body: '無法完全啟用離線功能和推播通知。',
+      //   icon: './icons/icon-192.png'
+      // });
+      throw error; // 抛出错误以在控制台显示堆栈信息
+    })
+  );
+});
+
 self.addEventListener('fetch', event => {
-  // 對於 posts.json，採用網路優先策略，確保使用者重新整理時能看到最新內容
   if (event.request.url.includes('posts.json')) {
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
-          // 如果成功從網路取得，就更新快取
           if (networkResponse && networkResponse.ok) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then(cache => {
@@ -38,187 +86,107 @@ self.addEventListener('fetch', event => {
           }
           return networkResponse;
         })
-        .catch(() => caches.match(event.request)) // 網路失敗時從快取讀取
+        .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // 其他請求，優先使用快取
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // 如果快取中有，就直接回傳
         return response || fetch(event.request);
       })
   );
 });
 
-// 啟用 Service Worker 時，刪除舊的快取
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push Received.');
+  const data = event.data.json();
+
+  console.log('[Service Worker] Push data:', data);
+
+  const title = data.title || '新通知';
+  const options = {
+    body: data.body || '您有一條新消息。',
+    icon: data.icon || './icons/icon-192.png',
+    badge: data.badge || './icons/icon-192.png',
+    image: data.image,
+    tag: data.tag || 'web-push-notification',
+    renotify: data.renotify || true,
+    data: {
+      url: data.url || '/'
+    }
+  };
+
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    self.registration.showNotification(title, options)
   );
 });
 
-// 處理週期性背景同步事件
 self.addEventListener('periodicsync', event => {
   if (event.tag === 'content-check') {
-    console.log('執行背景內容檢查...');
+    console.log('[Service Worker] 執行背景內容檢查...');
     event.waitUntil(checkForUpdatesAndNotify());
   }
 });
 
-// 檢查更新並發送通知的函式
 async function checkForUpdatesAndNotify() {
   try {
-    console.log('背景同步：正在檢查 posts.json 更新...');
+    console.log('[Service Worker] 背景同步：正在檢查 posts.json 更新...');
     const cache = await caches.open(CACHE_NAME);
-    const request = new Request('./posts.json', { cache: 'no-store' }); // 確保從網路獲取
+    const request = new Request('./posts.json', { cache: 'no-store' });
 
     const networkResponse = await fetch(request);
     if (!networkResponse.ok) {
-      console.error('背景同步失敗：無法從網路獲取 posts.json。');
+      console.error('[Service Worker] 背景同步失敗：無法從網路獲取 posts.json。');
       return;
     }
 
     const cachedResponse = await cache.match(request);
-    const networkResponseForCache = networkResponse.clone();
 
     if (cachedResponse) {
-      const networkText = await networkResponse.text();
+      const networkText = await networkResponse.clone().text();
       const cachedText = await cachedResponse.text();
 
       if (networkText !== cachedText) {
-        console.log('背景檢查發現新內容，發送推播通知。');
-        await cache.put(request, networkResponseForCache); // 更新快取
+        console.log('[Service Worker] 背景檢查發現新內容，發送推播通知。');
+        await cache.put(request, networkResponse.clone());
         self.registration.showNotification('濟公報有新內容！', {
           body: '點擊查看最新聖賢語錄。',
           icon: './icons/icon-192.png',
-          badge: './icons/icon-192.png', // 用於 Android 通知欄的小圖示
-          tag: 'content-update' // 使用標籤讓新通知取代舊的，避免轟炸
+          badge: './icons/icon-192.png',
+          tag: 'jigongbao-content-update',
+          data: {
+            url: './index.html?source=periodicsync'
+          }
         });
       } else {
-        console.log('背景同步：內容無更新。');
+        console.log('[Service Worker] 背景同步：內容無更新。');
       }
     } else {
-      // 如果沒有快取，表示是第一次同步，直接快取最新版本
-      console.log('背景同步：無快取版本，正在快取新內容。');
-      await cache.put(request, networkResponseForCache);
+      console.log('[Service Worker] 背景同步：無快取版本，正在快取新內容。');
+      await cache.put(request, networkResponse.clone());
     }
   } catch (error) {
-    console.error('背景內容檢查出錯：', error);
+    console.error('[Service Worker] 背景內容檢查出錯：', error);
   }
 }
 
-// 處理通知點擊事件
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  event.waitUntil(clients.openWindow('./index.html'));
-=======
-const CACHE_NAME = 'jigong-pwa-cache-v1'; // 更新快取名稱以確保更新
-const urlsToCache = [
-  './',
-  './index.html',
-  './posts.json',
-  'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css',
-  './client.js', // 確保訂閱腳本被快取
-  'https://cdn.jsdelivr.net/npm/flatpickr',
-  'https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
-];
-
-// 安裝 Service Worker
-self.addEventListener('install', (event) => {
-  // 執行安裝步驟
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
-});
-
-// 攔截網路請求並從快取或網路回應
-self.addEventListener('fetch', (event) => {
-  // 對於 posts.json，採用網路優先策略 (Network First)，確保使用者能看到最新內容
-  if (event.request.url.includes('posts.json')) {
-    event.respondWith(
-      fetch(event.request)
-        .then(networkResponse => {
-          // 如果成功從網路取得，就更新快取
-          if (networkResponse && networkResponse.ok) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => caches.match(event.request)), // 網路失敗時從快取讀取
-    );
-    return;
-  }
-
-  // 其他請求，採用快取優先 (Cache First)
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // 如果快取中有，就直接回傳
-      return response || fetch(event.request);
-    }),
-  );
-});
-
-// 啟用 Service Worker 時，刪除舊的快取
-self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        }),
-      );
-    }),
-  );
-});
-
-// --- 以下是新的推播處理邏輯 ---
-
-// 監聽來自伺服器的 push 事件
-self.addEventListener('push', (event) => {
-  const data = event.data.json();
-  console.log('收到推播訊息:', data);
-
-  const options = {
-    body: data.body,
-    icon: 'icons/icon-192.png',
-    badge: 'icons/icon-192.png',
-    image: data.image,
-    data: {
-      url: data.url, // 將點擊後要前往的 URL 放在 data 中
-    },
-  };
-
-  event.waitUntil(self.registration.showNotification(data.title, options));
-});
-
-// 監聽使用者點擊通知的事件
 self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification click Received.');
   event.notification.close();
-  // 開啟 server.js 中 payload 指定的 url
-  event.waitUntil(clients.openWindow(event.notification.data.url || '/'));
->>>>>>> 2d79b05 (Auto commit on 2025-07-17 05:15:15)
+
+  const clickedNotification = event.notification;
+  const urlToOpen = clickedNotification.data && clickedNotification.data.url ? clickedNotification.data.url : './index.html';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url === new URL(urlToOpen, self.location.origin).href && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(urlToOpen);
+    })
+  );
 });
