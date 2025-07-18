@@ -373,6 +373,10 @@ function showCustomBrowserPrompt() {
         confirmOpenBrowserButton.addEventListener('click', () => {
             hideCustomBrowserPrompt();
             // 自動將瀏覽器導入濟公報網址
+            // 重要提醒：JavaScript 無法直接強制瀏覽器以「無痕模式」或「另一個瀏覽器應用程式」打開。
+            // `_blank` 參數會在新分頁或新視窗中打開 URL，
+            // 具體是否為無痕模式，或是否由使用者預設的非當前瀏覽器開啟，
+            // 都取決於使用者的瀏覽器設定和作業系統的處理方式。
             window.open(JIGONG_NEWS_FULL_URL, '_blank'); // 使用新的完整 URL
         });
     }
