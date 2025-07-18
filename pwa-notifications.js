@@ -37,13 +37,15 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.style.backgroundColor = '#6c757d'; // 灰色
         subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
         
-        // --- 核心修改在这里 ---
         subscribeButton.onclick = () => {
-            // 直接指定你的 PWA 的根 URL，加上参数
+            // 明确指定你的 PWA 的绝对根 URL，加上参数
+            // 请确保这个 URL 是你的 GitHub Pages PWA 的直接链接
             const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
+            
+            // 使用 _blank 目标，这是标准 Web 行为，告诉浏览器在新上下文打开。
+            // 至于是否是外部浏览器，由浏览器/操作系统决定，JS无法强制。
             window.open(pwaDirectUrl, '_blank');
         };
-        // --- 修改结束 ---
         return;
     }
     // --- 正常环境下的逻辑 ---
