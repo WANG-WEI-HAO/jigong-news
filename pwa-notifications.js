@@ -156,7 +156,7 @@ function showCustomInstallPrompt(type = 'default') {
                 ">立即分享 (加入主畫面)</button>
             </div>
         `;
-    } else if (type === 'ios') { // 如果是 iOS 但不支持 Web Share API (理論上現代 iOS Safari 都支持)
+    } else if (type === 'ios') { // 如果是 iOS 但不支持 Web Share API (備用方案)
         contentHTML = `
             <p style="margin: 0; font-weight: bold;">在您的 Apple 裝置上安裝濟公報應用程式</p>
             <p style="margin: 0; font-size: 0.95em; opacity: 0.9;">請按照以下步驟，將本網站添加到主畫面：</p>
@@ -286,43 +286,25 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
     }
 
     if (isSandboxedEnvironment) {
-        // === START: 關鍵修改 - 整合 Web Share API ===
-        if (navigator.share) { // 檢查瀏覽器是否支持 Web Share API
-            subscribeButton.textContent = '➡️ 分享到瀏覽器開啟通知';
-            subscribeButton.disabled = false;
-            subscribeButton.style.backgroundColor = '#6c757d'; 
-            subscribeButton.title = '您正在受限環境中。請點擊分享，然後在瀏覽器中打開以啟用通知功能。';
+        subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
+        subscribeButton.disabled = false;
+        subscribeButton.style.backgroundColor = '#6c757d'; 
+        subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
+        
+        subscribeButton.onclick = null; 
+        subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+        
+        // === START: 關鍵修改 ===
+        subscribeButton.addEventListener('click', () => { 
+            // 彈出確認對話框
+            const confirmOpen = confirm("您正在獨立應用程式模式下。通知功能需要在瀏覽器中設定。\n\n是否要在瀏覽器中開啟濟公報？");
             
-            subscribeButton.onclick = null; 
-            subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
-            subscribeButton.addEventListener('click', async () => { 
-                try {
-                    // 定義分享的內容
-                    await navigator.share({
-                        title: '濟公報',
-                        text: '前往濟公報官方網站以開啟推播通知',
-                        url: "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1" 
-                    });
-                    console.log('分享對話框已成功打開');
-                } catch (err) {
-                    console.error('Web Share API 錯誤:', err);
-                    // 如果分享失敗（例如用戶取消），可以提供備用方案
-                    alert('分享失敗。請手動複製網址並在瀏覽器中打開：\nhttps://wang-wei-hao.github.io/jigong-news/');
-                }
-            });
-        } else { // 如果瀏覽器不支持 Web Share API，則退回舊的跳轉方式
-            subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
-            subscribeButton.disabled = false;
-            subscribeButton.style.backgroundColor = '#6c757d'; 
-            subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
-            
-            subscribeButton.onclick = null; 
-            subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
-            subscribeButton.addEventListener('click', () => { 
+            if (confirmOpen) {
+                // 如果用戶確認，則在系統瀏覽器中打開新標籤頁
                 const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
                 window.open(pwaDirectUrl, '_blank');
-            });
-        }
+            }
+        });
         // === END: 關鍵修改 ===
         return;
     }
