@@ -260,6 +260,8 @@ function showCustomInstallPrompt(type = 'default') {
 }
 
 // 新增的客製化彈跳視窗函數，用於確認是否分享網址到瀏覽器打開
+// 這個函數現在不會被直接呼叫，因為我們選擇直接跳轉。
+// 但為了保持程式碼結構完整性，暫時保留。
 function showCustomBrowserPrompt() {
     let promptOverlay = document.getElementById('customBrowserPromptOverlay');
 
@@ -449,14 +451,19 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.textContent = '➡️ 在瀏覽器中開啟濟公報';
         subscribeButton.disabled = false;
         subscribeButton.style.backgroundColor = '#6c757d';
-        subscribeButton.title = '您正在應用程式模式中。請點擊前往瀏覽器開啟濟公報。';
+        subscribeButton.title = '您正在應用程式模式中。點擊將在瀏覽器中開啟濟公報。'; // 更新提示文字
 
         subscribeButton.onclick = null;
         subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
 
-        // === START: 關鍵修改 ===
+        // === START: 關鍵修改 - 直接開啟網址，不再顯示確認彈窗 ===
         subscribeButton.addEventListener('click', () => {
-            showCustomBrowserPrompt(); // 調用新的客製化彈跳視窗
+            // 直接開啟濟公報網址，無需確認彈窗
+            // 重要提醒：JavaScript 無法直接強制瀏覽器以「無痕模式」或「另一個瀏覽器應用程式」打開。
+            // `_blank` 參數會在新分頁或新視窗中打開 URL，
+            // 具體是否為無痕模式，或是否由使用者預設的非當前瀏覽器開啟，
+            // 都取決於使用者的瀏覽器設定和作業系統的處理方式。
+            window.open(JIGONG_NEWS_FULL_URL, '_blank');
         });
         // === END: 關鍵修改 ===
         return;
