@@ -1,7 +1,7 @@
 // jigongbao-pwa/frontend/public/pwa-notifications.js (最新修改版，使用JS动态弹窗)
 
 // !!! 請在這裡替換為你的 Render 後端實際 URL !!!
-const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com/';
+const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com'; // 請確認這個URL是否正確，通常不需要末尾的斜杠
 
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
@@ -42,98 +42,149 @@ function urlBase64ToUint8Array(base64String) {
 // --- JS 动态安装提示弹窗逻辑 ---
 // 这个函数现在负责创建、显示和管理弹窗
 function showInstallPrompt() {
-    // 避免重复创建弹窗
-    if (document.getElementById('customInstallPrompt')) {
-        document.getElementById('customInstallPrompt').style.display = 'block';
-        return;
-    }
+    let promptOverlay = document.getElementById('customInstallPromptOverlay');
 
-    const promptDiv = document.createElement('div');
-    promptDiv.id = 'customInstallPrompt';
-    promptDiv.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: #333;
-        color: white;
-        padding: 15px 25px;
-        border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-        z-index: 1000;
-        font-size: 1.1em;
-        text-align: center;
-        max-width: 90%;
-        box-sizing: border-box;
-        display: block; /* 确保显示 */
-    `;
+    if (!promptOverlay) {
+        // 创建背景遮罩
+        promptOverlay = document.createElement('div');
+        promptOverlay.id = 'customInstallPromptOverlay';
+        promptOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* 半透明黑色背景 */
+            z-index: 9999; /* 确保在最上层 */
+            display: flex; /* 使用 flexbox 居中其子元素 */
+            justify-content: center;
+            align-items: center;
+            opacity: 0; /* 初始透明，用于渐入效果 */
+            transition: opacity 0.3s ease-in-out; /* 渐入动画 */
+            backdrop-filter: blur(5px); /* 模糊背景，可选 */
+        `;
+        document.body.appendChild(promptOverlay);
 
-    // Dark Mode 适配（动态添加类名或直接设置样式）
-    if (document.body.classList.contains('dark-mode')) {
-        promptDiv.style.backgroundColor = '#2c2c2c';
-        promptDiv.style.boxShadow = '0 4px 10px rgba(255, 255, 255, 0.1)';
-    }
-
-    promptDiv.innerHTML = `
-        <p style="margin: 0 0 10px 0;">希望每天自動收到濟公報更新嗎？安裝應用程式以獲取最佳體驗和推播通知！</p>
-        <button id="customInstallAppButton" style="
-            background-color: #5a4fcf;
+        // 创建弹窗容器
+        const promptDiv = document.createElement('div');
+        promptDiv.id = 'customInstallPrompt';
+        promptDiv.style.cssText = `
+            background-color: #333;
             color: white;
-            border: none;
-            padding: 8px 15px;
-            margin-left: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: background-color 0.2s;
-        ">立即安裝</button>
-        <button id="customCancelInstallButton" style="
-            background-color: transparent;
-            color: #bbb;
-            font-size: 1.2em;
-            position: absolute;
-            top: 5px;
-            right: 10px;
-            padding: 0 5px;
-            line-height: 1;
-            border: none;
-            cursor: pointer;
-        ">×</button>
-    `;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+            z-index: 10000; /* 比遮罩更高 */
+            font-size: 1.1em;
+            text-align: center;
+            /* 响应式宽度：最小300px，最大500px，自适应屏幕90% */
+            width: clamp(300px, 90vw, 500px); 
+            box-sizing: border-box;
+            transform: scale(0.9); /* 初始缩小，用于放大效果 */
+            transition: transform 0.3s ease-in-out; /* 放大动画 */
+            position: relative; /* 允许取消按钮定位 */
+            display: flex; /* 内部内容也使用 flex */
+            flex-direction: column;
+            align-items: center;
+            gap: 15px; /* 间距 */
+        `;
 
-    document.body.appendChild(promptDiv);
+        // Dark Mode 适配（动态添加类名或直接设置样式）
+        if (document.body.classList.contains('dark-mode')) {
+            promptDiv.style.backgroundColor = '#2c2c2c';
+            promptDiv.style.boxShadow = '0 6px 20px rgba(255, 255, 255, 0.1)';
+        }
 
-    // 绑定事件监听器到动态创建的按钮
-    const customInstallAppButton = document.getElementById('customInstallAppButton');
-    const customCancelInstallButton = document.getElementById('customCancelInstallButton');
+        promptDiv.innerHTML = `
+            <p style="margin: 0;">希望每天自動收到濟公報更新嗎？</p>
+            <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">安裝應用程式以獲取最佳體驗和推播通知！</p>
+            <div style="display: flex; gap: 15px; margin-top: 10px;">
+                <button id="customInstallAppButton" style="
+                    background-color: #5a4fcf;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 1em;
+                    transition: background-color 0.2s, transform 0.1s;
+                    min-width: 100px;
+                ">立即安裝</button>
+            </div>
+            <button id="customCancelInstallButton" style="
+                background-color: transparent;
+                color: #bbb;
+                font-size: 1.5em; /* 放大取消按鈕 */
+                position: absolute;
+                top: 8px; /* 调整位置 */
+                right: 12px; /* 调整位置 */
+                padding: 0 5px;
+                line-height: 1;
+                border: none;
+                cursor: pointer;
+                transition: color 0.2s;
+            ">×</button>
+        `;
 
-    if (customInstallAppButton) {
-        customInstallAppButton.addEventListener('click', async () => {
-            hideInstallPrompt(); // 隐藏自定义提示
-            if (deferredPrompt) {
-                deferredPrompt.prompt(); // 触发浏览器默认的安装提示
-                const { outcome } = await deferredPrompt.userChoice; // 等待用户选择
-                console.log(`User response to the install prompt: ${outcome}`);
+        promptOverlay.appendChild(promptDiv);
+
+        // 绑定事件监听器到动态创建的按钮
+        const customInstallAppButton = document.getElementById('customInstallAppButton');
+        const customCancelInstallButton = document.getElementById('customCancelInstallButton');
+
+        if (customInstallAppButton) {
+            customInstallAppButton.addEventListener('click', async () => {
+                hideInstallPrompt(); // 隐藏自定义提示
+                if (deferredPrompt) {
+                    deferredPrompt.prompt(); // 触发浏览器默认的安装提示
+                    const { outcome } = await deferredPrompt.userChoice; // 等待用户选择
+                    console.log(`User response to the install prompt: ${outcome}`);
+                    deferredPrompt = null; // 清除事件
+                }
+            });
+        }
+
+        if (customCancelInstallButton) {
+            customCancelInstallButton.addEventListener('click', () => {
+                hideInstallPrompt(); // 隐藏自定义提示
                 deferredPrompt = null; // 清除事件
-                // 安装后可能页面会以 standalone 模式重新加载
+            });
+        }
+
+        // 点击遮罩外部也隐藏弹窗
+        promptOverlay.addEventListener('click', (e) => {
+            if (e.target === promptOverlay) { // 确保点击的是遮罩本身，而不是内部弹窗
+                hideInstallPrompt();
             }
         });
     }
 
-    if (customCancelInstallButton) {
-        customCancelInstallButton.addEventListener('click', () => {
-            hideInstallPrompt(); // 隐藏自定义提示
-            deferredPrompt = null; // 清除事件
-        });
-    }
+    // 显示遮罩和弹窗，并应用动画效果
+    promptOverlay.style.display = 'flex';
+    setTimeout(() => { // 短暂延迟后应用透明度，触发 CSS 渐入
+        promptOverlay.style.opacity = '1';
+        const promptDiv = document.getElementById('customInstallPrompt');
+        if (promptDiv) {
+            promptDiv.style.transform = 'scale(1)'; // 放大到正常大小
+        }
+    }, 50); // 微小延迟，确保 display:flex先生效
+
 }
 
 function hideInstallPrompt() {
+    const promptOverlay = document.getElementById('customInstallPromptOverlay');
     const promptDiv = document.getElementById('customInstallPrompt');
-    if (promptDiv) {
-        promptDiv.style.display = 'none';
-        // 也可以选择移除元素，避免DOM堆积，但本次只隐藏
-        // promptDiv.remove();
+    if (promptOverlay && promptDiv) {
+        promptOverlay.style.opacity = '0'; // 渐出效果
+        promptDiv.style.transform = 'scale(0.9)'; // 缩小效果
+        
+        // 动画结束后移除元素，避免DOM堆积
+        promptOverlay.addEventListener('transitionend', function handler() {
+            promptOverlay.style.display = 'none';
+            // 可以选择移除整个 overlay 或只移除 promptDiv，这里只隐藏
+            // promptOverlay.remove(); // 如果选择移除，下次需要重新创建
+            promptOverlay.removeEventListener('transitionend', handler); // 移除监听器，避免重复触发
+        });
     }
 }
 
@@ -215,11 +266,12 @@ async function subscribeUser() {
         return;
     }
 
-    const confirmSubscribe = confirm('您確定要訂閱每日濟公報推播通知嗎？');
-    if (!confirmSubscribe) {
-        updateNotificationUI(false, Notification.permission);
-        return;
-    }
+    // 将确认对话框替换为更友好的提示或直接请求，或者放在自定义弹窗中
+    // const confirmSubscribe = confirm('您確定要訂閱每日濟公報推播通知嗎？');
+    // if (!confirmSubscribe) {
+    //     updateNotificationUI(false, Notification.permission);
+    //     return;
+    // }
 
     subscribeButton.disabled = true;
     subscribeButton.textContent = '正在請求權限...';
@@ -263,10 +315,10 @@ async function subscribeUser() {
             console.log('訂閱成功並發送到後端。');
             alert('您已成功訂閱每日濟公報推播通知！');
             updateNotificationUI(true, Notification.permission);
-            if ('periodicSync' in swRegistration) {
+            if ('periodicSync' in swRegistration) { // periodicSync 是實驗性功能，瀏覽器支持有限
                 try {
                     await swRegistration.periodicSync.register('content-check', {
-                        minInterval: 24 * 60 * 60 * 1000
+                        minInterval: 24 * 60 * 60 * 1000 // 每天檢查一次
                     });
                     console.log('Periodic background sync registered successfully.');
                 } catch (e) {
@@ -277,7 +329,7 @@ async function subscribeUser() {
             const errorText = await response.text();
             console.error('發送訂閱信息到後端失敗:', response.status, errorText);
             alert(`訂閱失敗: ${errorText || '未知錯誤'}`);
-            await subscription.unsubscribe();
+            await subscription.unsubscribe(); // 后端失败，前端也取消订阅
         }
     } catch (error) {
         console.error('訂閱失敗:', error);
@@ -319,7 +371,7 @@ async function unsubscribeUser() {
                 const errorText = await response.text();
                 console.error('發送取消訂閱信息到後端失敗:', response.status, errorText);
                 alert(`取消訂閱失敗: ${errorText || '未知錯誤'}`);
-                return;
+                // return; 不要 return，即使后端失败也要尝试在前端取消
             }
 
             await subscription.unsubscribe();
@@ -408,22 +460,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // PWA 安装提示逻辑 (确保 DOM 元素已加载)
-    // 这里的 installAppModal, installAppBtn, cancelInstallBtn 都是通过JS动态创建的
-    // 所以，这里不再需要检查它们是否存在，而是确保它们的事件绑定在 showInstallPrompt 函数内部
-    // 或者，将 installAppBtn 和 cancelInstallBtn 的事件绑定放到这里，它们在 showInstallPrompt 内部通过 document.getElementById 获取
-    
-    // 如果是 PWA 已安装模式，则不显示安装提示，直接初始化通知功能 (这部分逻辑已经在 DOMContentLoaded 外面)
-    if (isPWAInstalled() || isSandboxed()) { // 这里的判断与 DOMContentLoaded 外面的 if 逻辑重叠
-        // console.log('当前环境为已安装 PWA 或受限沙箱，不显示安装提示。');
-        // hideInstallPrompt(); // 这里的 hideInstallPrompt() 应该由 showInstallPrompt() 自己判断
-        // 已经通过 initializeNotificationFeatures() 内部调用 updateNotificationUI 处理了沙箱按钮
-        // 对于已安装的 PWA，我们只需确保不显示安装提示
+    if (isPWAInstalled() || isSandboxed()) { 
         if(isPWAInstalled()){
              console.log('PWA 已安裝，不顯示安裝提示。');
-             // 这里不需要 hideInstallPrompt() 因为还没有 showInstallPrompt()
         }
     } else {
-        // 如果不是已安装 PWA 也不是沙箱，则监听 beforeinstallprompt 事件
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
