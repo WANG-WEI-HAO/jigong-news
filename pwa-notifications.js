@@ -4,7 +4,10 @@
 const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
-const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io'; 
+const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io';
+
+// 新增濟公報的完整 URL
+const JIGONG_NEWS_FULL_URL = 'https://wang-wei-hao.github.io/jigong-news/';
 
 // 允許的本地開發主機名稱列表
 const ALLOWED_DEV_HOSTNAMES = ['localhost', '127.0.0.1'];
@@ -66,7 +69,7 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 // --- JS 动态安装提示弹窗逻辑 ---
-function showCustomInstallPrompt(type = 'default') { 
+function showCustomInstallPrompt(type = 'default') {
     if (!isOfficialOrigin()) {
         console.warn('非官方網域，不顯示安裝提示。');
         return;
@@ -83,14 +86,14 @@ function showCustomInstallPrompt(type = 'default') {
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); 
-            z-index: 9999; 
-            display: flex; 
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            display: flex;
             justify-content: center;
             align-items: center;
-            opacity: 0; 
-            transition: opacity 0.3s ease-in-out; 
-            backdrop-filter: blur(5px); 
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            backdrop-filter: blur(5px);
         `;
         document.body.appendChild(promptOverlay);
 
@@ -102,36 +105,36 @@ function showCustomInstallPrompt(type = 'default') {
             padding: 20px 30px;
             border-radius: 12px;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-            z-index: 10000; 
+            z-index: 10000;
             font-size: 1.1em;
             text-align: center;
-            width: clamp(300px, 90vw, 500px); 
+            width: clamp(300px, 90vw, 500px);
             box-sizing: border-box;
-            transform: scale(0.9); 
-            transition: transform 0.3s ease-in-out; 
-            position: relative; 
-            display: flex; 
+            transform: scale(0.9);
+            transition: transform 0.3s ease-in-out;
+            position: relative;
+            display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px; 
+            gap: 15px;
         `;
 
         if (document.body.classList.contains('dark-mode')) {
             promptDiv.style.backgroundColor = '#2c2c2c';
             promptDiv.style.boxShadow = '0 6px 20px rgba(255, 255, 255, 0.1)';
         }
-        
+
         promptOverlay.appendChild(promptDiv);
 
         promptOverlay.addEventListener('click', (e) => {
-            if (e.target === promptOverlay) { 
+            if (e.target === promptOverlay) {
                 hideInstallPrompt();
             }
         });
     }
 
     const promptContentDiv = document.getElementById('customInstallPrompt');
-    if (!promptContentDiv) return; 
+    if (!promptContentDiv) return;
 
     let contentHTML = '';
     let buttonsHTML = '';
@@ -195,10 +198,10 @@ function showCustomInstallPrompt(type = 'default') {
         <button id="customCancelInstallButton" style="
             background-color: transparent;
             color: #bbb;
-            font-size: 1.5em; 
+            font-size: 1.5em;
             position: absolute;
-            top: 8px; 
-            right: 12px; 
+            top: 8px;
+            right: 12px;
             padding: 0 5px;
             line-height: 1;
             border: none;
@@ -212,28 +215,28 @@ function showCustomInstallPrompt(type = 'default') {
     const customCancelInstallButton = document.getElementById('customCancelInstallButton');
     const iosShareButton = document.getElementById('iosShareButton');
 
-    if (customInstallAppButton) { 
+    if (customInstallAppButton) {
         customInstallAppButton.addEventListener('click', async () => {
-            hideInstallPrompt(); 
+            hideInstallPrompt();
             if (deferredPrompt) {
-                deferredPrompt.prompt(); 
-                const { outcome } = await deferredPrompt.userChoice; 
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
                 console.log(`User response to the install prompt: ${outcome}`);
-                deferredPrompt = null; 
+                deferredPrompt = null;
             }
         });
     }
-    
+
     if (iosShareButton) {
         iosShareButton.addEventListener('click', async () => {
             try {
                 await navigator.share({
                     title: '濟公報',
                     text: '安裝濟公報 PWA 應用程式',
-                    url: window.location.href 
+                    url: window.location.href
                 });
                 console.log('分享對話框已成功打開');
-                hideInstallPrompt(); 
+                hideInstallPrompt();
             } catch (err) {
                 console.error('Web Share API 錯誤:', err);
             }
@@ -242,18 +245,18 @@ function showCustomInstallPrompt(type = 'default') {
 
     if (customCancelInstallButton) {
         customCancelInstallButton.addEventListener('click', () => {
-            hideInstallPrompt(); 
-            if (type !== 'ios') { 
-                deferredPrompt = null; 
+            hideInstallPrompt();
+            if (type !== 'ios') {
+                deferredPrompt = null;
             }
         });
     }
 
     promptOverlay.style.display = 'flex';
-    setTimeout(() => { 
+    setTimeout(() => {
         promptOverlay.style.opacity = '1';
-        promptContentDiv.style.transform = 'scale(1)'; 
-    }, 50); 
+        promptContentDiv.style.transform = 'scale(1)';
+    }, 50);
 }
 
 // 新增的客製化彈跳視窗函數，用於確認是否分享網址到瀏覽器打開
@@ -306,7 +309,7 @@ function showCustomBrowserPrompt() {
             promptDiv.style.backgroundColor = '#2c2c2c';
             promptDiv.style.boxShadow = '0 6px 20px rgba(255, 255, 255, 0.1)';
         }
-        
+
         promptOverlay.appendChild(promptDiv);
 
         promptOverlay.addEventListener('click', (e) => {
@@ -350,10 +353,10 @@ function showCustomBrowserPrompt() {
         <button id="closeBrowserPromptButton" style="
             background-color: transparent;
             color: #bbb;
-            font-size: 1.5em; 
+            font-size: 1.5em;
             position: absolute;
-            top: 8px; 
-            right: 12px; 
+            top: 8px;
+            right: 12px;
             padding: 0 5px;
             line-height: 1;
             border: none;
@@ -370,7 +373,7 @@ function showCustomBrowserPrompt() {
         confirmOpenBrowserButton.addEventListener('click', () => {
             hideCustomBrowserPrompt();
             // 自動將瀏覽器導入濟公報網址
-            window.open(OFFICIAL_PWA_ORIGIN, '_blank');
+            window.open(JIGONG_NEWS_FULL_URL, '_blank'); // 使用新的完整 URL
         });
     }
 
@@ -400,7 +403,7 @@ function hideCustomBrowserPrompt() {
     if (promptOverlay && promptDiv) {
         promptOverlay.style.opacity = '0';
         promptDiv.style.transform = 'scale(0.9)';
-        
+
         promptOverlay.addEventListener('transitionend', function handler() {
             promptOverlay.style.display = 'none';
             promptOverlay.removeEventListener('transitionend', handler);
@@ -413,50 +416,50 @@ function hideInstallPrompt() {
     const promptOverlay = document.getElementById('customInstallPromptOverlay');
     const promptDiv = document.getElementById('customInstallPrompt');
     if (promptOverlay && promptDiv) {
-        promptOverlay.style.opacity = '0'; 
-        promptDiv.style.transform = 'scale(0.9)'; 
-        
+        promptOverlay.style.opacity = '0';
+        promptDiv.style.transform = 'scale(0.9)';
+
         promptOverlay.addEventListener('transitionend', function handler() {
             promptOverlay.style.display = 'none';
-            promptOverlay.removeEventListener('transitionend', handler); 
-        }, { once: true }); 
+            promptOverlay.removeEventListener('transitionend', handler);
+        }, { once: true });
     }
 }
 
 // 更新 UI 狀態（按鈕文本和可用性）
 function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
     if (!isOfficialOrigin()) {
-        if (subscribeButton) { 
+        if (subscribeButton) {
             subscribeButton.textContent = '❌ 非官方來源';
             subscribeButton.disabled = true;
-            subscribeButton.style.backgroundColor = '#6c757d'; 
+            subscribeButton.style.backgroundColor = '#6c757d';
             subscribeButton.title = '通知和安裝功能僅限於官方網站提供。';
-            subscribeButton.onclick = null; 
-            subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+            subscribeButton.onclick = null;
+            subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
         }
         console.warn('PWA 運行於非官方來源，通知功能已禁用。');
-        return; 
+        return;
     }
 
     if (isSandboxedEnvironment) {
         subscribeButton.textContent = '➡️ 在瀏覽器中開啟濟公報';
         subscribeButton.disabled = false;
-        subscribeButton.style.backgroundColor = '#6c757d'; 
+        subscribeButton.style.backgroundColor = '#6c757d';
         subscribeButton.title = '您正在應用程式模式中。請點擊前往瀏覽器開啟濟公報。';
-        
-        subscribeButton.onclick = null; 
-        subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
-        
+
+        subscribeButton.onclick = null;
+        subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+
         // === START: 關鍵修改 ===
-        subscribeButton.addEventListener('click', () => { 
+        subscribeButton.addEventListener('click', () => {
             showCustomBrowserPrompt(); // 調用新的客製化彈跳視窗
         });
         // === END: 關鍵修改 ===
         return;
     }
-    
-    subscribeButton.onclick = null; 
-    subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+
+    subscribeButton.onclick = null;
+    subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
     subscribeButton.addEventListener('click', handleSubscribeButtonClick);
 
     if (permissionState === 'denied') {
@@ -479,10 +482,10 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
 
 async function checkSubscriptionAndUI() {
     if (!isOfficialOrigin()) {
-        updateNotificationUI(false, 'default', false); 
+        updateNotificationUI(false, 'default', false);
         return;
     }
-    
+
     if (isSandboxed()) {
         updateNotificationUI(false, 'default', true);
         console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
@@ -500,10 +503,10 @@ async function checkSubscriptionAndUI() {
         swRegistration = await navigator.serviceWorker.ready;
         const subscription = await swRegistration.pushManager.getSubscription();
         const permissionState = Notification.permission;
-        updateNotificationUI(!!subscription, permissionState, isSandboxed()); 
+        updateNotificationUI(!!subscription, permissionState, isSandboxed());
     } catch (error) {
         console.error('檢查訂閱狀態時出錯或Service Worker未準備好:', error);
-        updateNotificationUI(false, 'error'); 
+        updateNotificationUI(false, 'error');
         subscribeButton.textContent = '通知功能錯誤';
         subscribeButton.disabled = true;
         subscribeButton.style.backgroundColor = '#dc3545';
@@ -564,10 +567,10 @@ async function subscribeUser() {
             console.log('訂閱成功並發送到後端。');
             alert('您已成功訂閱每日濟公報推播通知！');
             updateNotificationUI(true, Notification.permission);
-            if ('periodicSync' in swRegistration) { 
+            if ('periodicSync' in swRegistration) {
                 try {
                     await swRegistration.periodicSync.register('content-check', {
-                        minInterval: 24 * 60 * 60 * 1000 
+                        minInterval: 24 * 60 * 60 * 1000
                     });
                     console.log('Periodic background sync registered successfully.');
                 } catch (e) {
@@ -578,7 +581,7 @@ async function subscribeUser() {
             const errorText = await response.text();
             console.error('發送訂閱信息到後端失敗:', response.status, errorText);
             alert(`訂閱失敗: ${errorText || '未知錯誤'}`);
-            await subscription.unsubscribe(); 
+            await subscription.unsubscribe();
         }
     } catch (error) {
         console.error('訂閱失敗:', error);
@@ -595,7 +598,7 @@ async function unsubscribeUser() {
     }
     if (!isOfficialOrigin()) {
         alert('推播取消訂閱功能僅限於官方網站提供。');
-        updateNotificationUI(true, Notification.permission); 
+        updateNotificationUI(true, Notification.permission);
         return;
     }
 
@@ -664,7 +667,7 @@ async function handleSubscribeButtonClick() {
 // --- 初始化通知相關的功能 (Service Worker 註冊等) ---
 function initializeNotificationFeatures() {
     if (!isOfficialOrigin()) {
-        updateNotificationUI(false, 'default', false); 
+        updateNotificationUI(false, 'default', false);
         return;
     }
 
@@ -679,7 +682,7 @@ function initializeNotificationFeatures() {
             .then(function(registration) {
                 console.log('Service Worker 註冊成功，作用域: ', registration.scope);
                 swRegistration = registration;
-                checkSubscriptionAndUI(); 
+                checkSubscriptionAndUI();
             })
             .catch(function(error) {
                 console.error('Service Worker 註冊失敗:', error);
@@ -706,12 +709,12 @@ function initializeNotificationFeatures() {
 // --- DOMContentLoaded 主入口 ---
 document.addEventListener('DOMContentLoaded', () => {
     if (subscribeButton) {
-        initializeNotificationFeatures(); 
+        initializeNotificationFeatures();
     } else {
         console.error('未能找到 ID 為 subscribe-btn 的按鈕。');
     }
 
-    if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) { 
+    if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) {
         if(isPWAInstalled()){
              console.log('PWA 已安裝，不顯示安裝提示。');
         }
@@ -722,22 +725,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!hasSeenInstallPrompt) {
                 setTimeout(() => {
                     showCustomInstallPrompt('ios');
-                    localStorage.setItem('hasSeenAppleInstallPrompt', 'true'); 
-                }, 3000); 
+                    localStorage.setItem('hasSeenAppleInstallPrompt', 'true');
+                }, 3000);
             }
         } else {
             window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault(); 
+                e.preventDefault();
                 deferredPrompt = e;
                 console.log('beforeinstallprompt 事件已保存。');
-                showCustomInstallPrompt('default'); 
+                showCustomInstallPrompt('default');
             });
 
             window.addEventListener('appinstalled', () => {
                 console.log('PWA 已成功安裝！');
                 hideInstallPrompt();
                 deferredPrompt = null;
-                checkSubscriptionAndUI(); 
+                checkSubscriptionAndUI();
             });
         }
     }
