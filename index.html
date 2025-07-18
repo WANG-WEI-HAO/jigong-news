@@ -8,17 +8,22 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
-  <!-- 標準 Favicon -->
-    <link rel="icon" href="/icons/icon-192.png" sizes="192x192" type="image/png">
-    <link rel="icon" href="/icons/濟公報logo.png" sizes="32x32" type="image/png">
-    <link rel="icon" href="/icons/濟公報logo.png" sizes="16x16" type="image/png">
+ <!-- === START: Favicon (浏览器标签页图标) === -->
+    <!-- 这是一个很好的现代浏览器标准，提供不同尺寸 -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/濟公報logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/濟公報logo.png">
+
+    <!-- 传统浏览器的回退 (fallback) -->
+    <!-- `shortcut icon` 已经不是现代标准，但为了最大兼容性可以保留 -->
     <link rel="shortcut icon" href="/icons/濟公報logo.png">
-  
+    
   <!-- Apple PWA tags -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="濟公報">
-  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-512.png"> 
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-4EBM386ZCS"></script>
   <script>
