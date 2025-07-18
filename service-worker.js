@@ -177,7 +177,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const clickedNotification = event.notification;
-  const urlToOpen = clickedNotification.data && clickedNotification.data.url ? clickedNotification.data.url : './index.html';
+  const urlToOpen = clickedNotification.data && clickedNotification.data.url ? clickedNotification.data.url : 'https://wang-wei-hao.github.io/jigong-news/';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
