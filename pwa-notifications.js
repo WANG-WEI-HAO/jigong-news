@@ -68,8 +68,57 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
+// --- 客製化 Toast 訊息函數 ---
+function showToast(message, type = 'info') {
+    let toast = document.getElementById('customToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'customToast';
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 10001;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            font-size: 0.9em;
+            text-align: center;
+            min-width: 200px;
+            white-space: nowrap; /* 防止換行 */
+        `;
+        document.body.appendChild(toast);
+    }
+
+    toast.textContent = message;
+    toast.style.backgroundColor = '#333'; // Default
+    if (type === 'success') toast.style.backgroundColor = '#28a745'; // Green
+    if (type === 'error') toast.style.backgroundColor = '#dc3545';   // Red
+    if (type === 'warning') toast.style.backgroundColor = '#ffc107'; // Yellow
+
+    toast.style.opacity = '1';
+
+    // 移除舊的定時器，確保只運行一個
+    if (toast.timeoutId) {
+        clearTimeout(toast.timeoutId);
+    }
+
+    toast.timeoutId = setTimeout(() => {
+        toast.style.opacity = '0';
+        // 如果希望每次都移除元素，可以取消註解下一行
+        // toast.remove();
+    }, 3000); // 3 秒後消失
+}
+
+
 // --- JS 动态安装提示弹窗逻辑 ---
 function showCustomInstallPrompt(type = 'default') {
+    console.log('顯示客製化安裝提示，類型:', type);
     if (!isOfficialOrigin()) {
         console.warn('非官方網域，不顯示安裝提示。');
         return;
@@ -239,6 +288,7 @@ function showCustomInstallPrompt(type = 'default') {
                 hideInstallPrompt();
             } catch (err) {
                 console.error('Web Share API 錯誤:', err);
+                showToast('分享失敗，請從瀏覽器手動分享。', 'error'); // 使用 Toast
             }
         });
     }
@@ -434,6 +484,7 @@ function hideInstallPrompt() {
 
 // 更新 UI 狀態（按鈕文本和可用性）
 function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
+    console.log('更新通知 UI 狀態。訂閱狀態:', isSubscribed, '權限狀態:', permissionState, '沙箱環境:', isSandboxedEnvironment);
     if (!isOfficialOrigin()) {
         if (subscribeButton) {
             subscribeButton.textContent = '❌ 非官方來源';
@@ -458,6 +509,7 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
 
         // === START: 關鍵修改 - 直接開啟網址，不再顯示確認彈窗 ===
         subscribeButton.addEventListener('click', () => {
+            console.log('在沙箱環境中點擊按鈕，直接開啟濟公報網址:', JIGONG_NEWS_FULL_URL);
             // 直接開啟濟公報網址，無需確認彈窗
             // 重要提醒：JavaScript 無法直接強制瀏覽器以「無痕模式」或「另一個瀏覽器應用程式」打開。
             // `_blank` 參數會在新分頁或新視窗中打開 URL，
@@ -492,6 +544,7 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
 }
 
 async function checkSubscriptionAndUI() {
+    console.log('檢查訂閱狀態和更新 UI...');
     if (!isOfficialOrigin()) {
         updateNotificationUI(false, 'default', false);
         return;
@@ -507,11 +560,13 @@ async function checkSubscriptionAndUI() {
         updateNotificationUI(false, 'not-supported');
         subscribeButton.textContent = '瀏覽器不支持通知';
         subscribeButton.title = '您的瀏覽器不支持 Service Worker 或推播通知。';
+        console.warn('瀏覽器不支持 Service Worker 或推播通知。');
         return;
     }
 
     try {
         swRegistration = await navigator.serviceWorker.ready;
+        console.log('Service Worker 已準備好。');
         const subscription = await swRegistration.pushManager.getSubscription();
         const permissionState = Notification.permission;
         updateNotificationUI(!!subscription, permissionState, isSandboxed());
@@ -522,16 +577,18 @@ async function checkSubscriptionAndUI() {
         subscribeButton.disabled = true;
         subscribeButton.style.backgroundColor = '#dc3545';
         subscribeButton.title = '通知功能啟動失敗，請重新載入頁面或檢查瀏覽器設定。';
+        showToast('通知功能啟動失敗，請重新載入頁面。', 'error'); // 使用 Toast
     }
 }
 
 async function subscribeUser() {
+    console.log('嘗試訂閱用戶...');
     if (!swRegistration) {
-        alert('Service Worker 尚未準備好，無法訂閱。請重新載入頁面。');
+        showToast('Service Worker 尚未準備好，無法訂閱。請重新載入頁面。', 'error'); // 使用 Toast
         return;
     }
     if (!isOfficialOrigin()) {
-        alert('推播訂閱功能僅限於官方網站提供。');
+        showToast('推播訂閱功能僅限於官方網站提供。', 'warning'); // 使用 Toast
         updateNotificationUI(false, Notification.permission);
         return;
     }
@@ -543,7 +600,7 @@ async function subscribeUser() {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
         console.warn('用戶拒絕了通知權限。');
-        alert('您已拒絕通知權限。若要訂閱，請至瀏覽器設定中手動開啟。');
+        showToast('您已拒絕通知權限。若要訂閱，請至瀏覽器設定中手動開啟。', 'warning'); // 使用 Toast
         updateNotificationUI(false, permission);
         return;
     }
@@ -554,10 +611,12 @@ async function subscribeUser() {
     try {
         const vapidPublicKeyResponse = await fetch(`${BACKEND_BASE_URL}/api/vapid-public-key`);
         if (!vapidPublicKeyResponse.ok) {
-            throw new Error(`無法獲取 VAPID 公鑰: ${vapidPublicKeyResponse.statusText}`);
+            const errorText = await vapidPublicKeyResponse.text();
+            throw new Error(`無法獲取 VAPID 公鑰: ${vapidPublicKeyResponse.statusText} - ${errorText}`);
         }
         const VAPID_PUBLIC_KEY = await vapidPublicKeyResponse.text();
         const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+        console.log('成功獲取 VAPID 公鑰。');
 
         const subscription = await swRegistration.pushManager.subscribe({
             userVisibleOnly: true,
@@ -576,7 +635,7 @@ async function subscribeUser() {
 
         if (response.ok) {
             console.log('訂閱成功並發送到後端。');
-            alert('您已成功訂閱每日濟公報推播通知！');
+            showToast('您已成功訂閱每日濟公報推播通知！', 'success'); // 使用 Toast
             updateNotificationUI(true, Notification.permission);
             if ('periodicSync' in swRegistration) {
                 try {
@@ -591,29 +650,30 @@ async function subscribeUser() {
         } else {
             const errorText = await response.text();
             console.error('發送訂閱信息到後端失敗:', response.status, errorText);
-            alert(`訂閱失敗: ${errorText || '未知錯誤'}`);
+            showToast(`訂閱失敗: ${errorText || '未知錯誤'}`, 'error'); // 使用 Toast
             await subscription.unsubscribe();
         }
     } catch (error) {
         console.error('訂閱失敗:', error);
-        alert(`訂閱失敗: ${error.message}`);
+        showToast(`訂閱失敗: ${error.message}`, 'error'); // 使用 Toast
     } finally {
         checkSubscriptionAndUI();
     }
 }
 
 async function unsubscribeUser() {
+    console.log('嘗試取消訂閱用戶...');
     if (!swRegistration) {
-        alert('Service Worker 尚未準備好，無法取消訂閱。請重新載入頁面。');
+        showToast('Service Worker 尚未準備好，無法取消訂閱。請重新載入頁面。', 'error'); // 使用 Toast
         return;
     }
     if (!isOfficialOrigin()) {
-        alert('推播取消訂閱功能僅限於官方網站提供。');
+        showToast('推播取消訂閱功能僅限於官方網站提供。', 'warning'); // 使用 Toast
         updateNotificationUI(true, Notification.permission);
         return;
     }
 
-    const confirmUnsubscribe = confirm('您確定要取消訂閱濟公報推播通知嗎？');
+    const confirmUnsubscribe = confirm('您確定要取消訂閱濟公報推播通知嗎？'); // 這裡保留 confirm，因為它通常在非沙箱環境下運行
     if (!confirmUnsubscribe) {
         updateNotificationUI(true, Notification.permission);
         return;
@@ -638,12 +698,12 @@ async function unsubscribeUser() {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('發送取消訂閱信息到後端失敗:', response.status, errorText);
-                alert(`取消訂閱失敗: ${errorText || '未知錯誤'}`);
+                showToast(`取消訂閱失敗: ${errorText || '未知錯誤'}`, 'error'); // 使用 Toast
             }
 
             await subscription.unsubscribe();
             console.log('Push Subscription Unsubscribed.');
-            alert('您已成功取消訂閱濟公報推播通知！');
+            showToast('您已成功取消訂閱濟公報推播通知！', 'success'); // 使用 Toast
             updateNotificationUI(false, Notification.permission);
 
             if ('periodicSync' in swRegistration) {
@@ -656,17 +716,19 @@ async function unsubscribeUser() {
             }
         } else {
             console.log('您當前沒有訂閱。');
+            showToast('您當前沒有訂閱。', 'info'); // 使用 Toast
             updateNotificationUI(false, Notification.permission);
         }
     } catch (error) {
         console.error('取消訂閱失敗:', error);
-        alert(`取消訂閱失敗: ${error.message}`);
+        showToast(`取消訂閱失敗: ${error.message}`, 'error'); // 使用 Toast
     } finally {
         checkSubscriptionAndUI();
     }
 }
 
 async function handleSubscribeButtonClick() {
+    console.log('處理訂閱按鈕點擊...');
     const currentSubscription = await swRegistration.pushManager.getSubscription();
     if (currentSubscription) {
         unsubscribeUser();
@@ -677,6 +739,7 @@ async function handleSubscribeButtonClick() {
 
 // --- 初始化通知相關的功能 (Service Worker 註冊等) ---
 function initializeNotificationFeatures() {
+    console.log('初始化通知功能...');
     if (!isOfficialOrigin()) {
         updateNotificationUI(false, 'default', false);
         return;
@@ -702,9 +765,12 @@ function initializeNotificationFeatures() {
                 subscribeButton.disabled = true;
                 subscribeButton.style.backgroundColor = '#dc3545';
                 subscribeButton.title = 'Service Worker 註冊失敗，推播功能不可用。';
+                showToast('Service Worker 註冊失敗，通知功能不可用。', 'error'); // 使用 Toast
             });
     } else {
         updateNotificationUI(false, 'not-supported');
+        console.warn('瀏覽器不支持 Service Worker。');
+        showToast('您的瀏覽器不支持 Service Worker 或推播通知。', 'error'); // 使用 Toast
     }
 
     if ('permissions' in navigator && 'PushManager' in window) {
@@ -719,10 +785,12 @@ function initializeNotificationFeatures() {
 
 // --- DOMContentLoaded 主入口 ---
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded 事件觸發。');
     if (subscribeButton) {
         initializeNotificationFeatures();
     } else {
         console.error('未能找到 ID 為 subscribe-btn 的按鈕。');
+        showToast('錯誤：未能找到通知按鈕。', 'error'); // 使用 Toast
     }
 
     if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) {
@@ -749,6 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             window.addEventListener('appinstalled', () => {
                 console.log('PWA 已成功安裝！');
+                showToast('PWA 已成功安裝！', 'success'); // 使用 Toast
                 hideInstallPrompt();
                 deferredPrompt = null;
                 checkSubscriptionAndUI();
