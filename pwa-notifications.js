@@ -1,7 +1,7 @@
 // jigongbao-pwa/frontend/public/pwa-notifications.js
 
 // !!! 請在這裡替換為你的 Render 後端實際 URL !!!
-const BACKEND_BASE_URL = 'https://jonggong-news-backend.onrender.com'; // 修正錯字：jigong -> jonggong
+const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com'; // 修正錯字：jonggong -> jigong
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
 const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io'; 
