@@ -4,13 +4,7 @@
 const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
-const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io';
-
-// 新增濟公報的完整 URL
-const JIGONG_NEWS_FULL_URL = 'https://wang-wei-hao.github.io/jigong-news/';
-
-// 允許的本地開發主機名稱列表
-const ALLOWED_DEV_HOSTNAMES = ['localhost', '127.0.0.1'];
+const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io'; // <--- 新增：你的 PWA 官方域名
 
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
@@ -31,9 +25,7 @@ function isInIframe() {
 }
 
 function isSandboxed() {
-    // 這裡我們擴展一下沙箱的定義：如果在 iframe 裡，或者在已安裝的 PWA 裡，
-    // 對於通知功能來說，都算是需要「跳轉到瀏覽器」的受限環境。
-    return isInIframe() || isPWAInstalled();
+    return isInIframe(); // 简化判断：如果在 iframe 里就认为是沙箱
 }
 
 // 检测是否为 Apple 设备 (iPhone/iPad/iPod)
@@ -46,13 +38,15 @@ function isMacSafari() {
     return navigator.userAgent.includes('Macintosh') && navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
 }
 
-// 检测当前页面是否运行在官方域名上
+// === 新增：检测当前页面是否运行在官方域名上 ===
 function isOfficialOrigin() {
-    if (ALLOWED_DEV_HOSTNAMES.includes(window.location.hostname)) {
-        return true;
+    // 在本地開發環境 (localhost) 下，通常也會允許運行，以便調試
+    if (window.location.hostname === 'localhost') {
+        return true; 
     }
     return window.location.origin === OFFICIAL_PWA_ORIGIN;
 }
+// === 新增结束 ===
 
 // 辅助函数：将 Base64 字符串转换为 Uint8Array
 function urlBase64ToUint8Array(base64String) {
@@ -68,57 +62,9 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-// --- 客製化 Toast 訊息函數 ---
-function showToast(message, type = 'info') {
-    let toast = document.getElementById('customToast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'customToast';
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #333;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            z-index: 10001;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-            font-size: 0.9em;
-            text-align: center;
-            min-width: 200px;
-            white-space: nowrap; /* 防止換行 */
-        `;
-        document.body.appendChild(toast);
-    }
-
-    toast.textContent = message;
-    toast.style.backgroundColor = '#333'; // Default
-    if (type === 'success') toast.style.backgroundColor = '#28a745'; // Green
-    if (type === 'error') toast.style.backgroundColor = '#dc3545';   // Red
-    if (type === 'warning') toast.style.backgroundColor = '#ffc107'; // Yellow
-
-    toast.style.opacity = '1';
-
-    // 移除舊的定時器，確保只運行一個
-    if (toast.timeoutId) {
-        clearTimeout(toast.timeoutId);
-    }
-
-    toast.timeoutId = setTimeout(() => {
-        toast.style.opacity = '0';
-        // 如果希望每次都移除元素，可以取消註解下一行
-        // toast.remove();
-    }, 3000); // 3 秒後消失
-}
-
-
 // --- JS 动态安装提示弹窗逻辑 ---
-function showCustomInstallPrompt(type = 'default') {
-    console.log('顯示客製化安裝提示，類型:', type);
+function showCustomInstallPrompt(type = 'default') { 
+    // 只有在官方域名下才显示安装提示
     if (!isOfficialOrigin()) {
         console.warn('非官方網域，不顯示安裝提示。');
         return;
@@ -135,14 +81,14 @@ function showCustomInstallPrompt(type = 'default') {
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 9999;
-            display: flex;
+            background-color: rgba(0, 0, 0, 0.7); 
+            z-index: 9999; 
+            display: flex; 
             justify-content: center;
             align-items: center;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-            backdrop-filter: blur(5px);
+            opacity: 0; 
+            transition: opacity 0.3s ease-in-out; 
+            backdrop-filter: blur(5px); 
         `;
         document.body.appendChild(promptOverlay);
 
@@ -154,61 +100,41 @@ function showCustomInstallPrompt(type = 'default') {
             padding: 20px 30px;
             border-radius: 12px;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-            z-index: 10000;
+            z-index: 10000; 
             font-size: 1.1em;
             text-align: center;
-            width: clamp(300px, 90vw, 500px);
+            width: clamp(300px, 90vw, 500px); 
             box-sizing: border-box;
-            transform: scale(0.9);
-            transition: transform 0.3s ease-in-out;
-            position: relative;
-            display: flex;
+            transform: scale(0.9); 
+            transition: transform 0.3s ease-in-out; 
+            position: relative; 
+            display: flex; 
             flex-direction: column;
             align-items: center;
-            gap: 15px;
+            gap: 15px; 
         `;
 
         if (document.body.classList.contains('dark-mode')) {
             promptDiv.style.backgroundColor = '#2c2c2c';
             promptDiv.style.boxShadow = '0 6px 20px rgba(255, 255, 255, 0.1)';
         }
-
+        
         promptOverlay.appendChild(promptDiv);
 
         promptOverlay.addEventListener('click', (e) => {
-            if (e.target === promptOverlay) {
+            if (e.target === promptOverlay) { 
                 hideInstallPrompt();
             }
         });
     }
 
     const promptContentDiv = document.getElementById('customInstallPrompt');
-    if (!promptContentDiv) return;
+    if (!promptContentDiv) return; 
 
     let contentHTML = '';
     let buttonsHTML = '';
 
-    if (type === 'ios' && navigator.share) { // 如果是 iOS 類型且支持 Web Share API
-        contentHTML = `
-            <p style="margin: 0; font-weight: bold;">在您的 Apple 裝置上安裝濟公報應用程式</p>
-            <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">點擊下方按鈕，然後選擇「<strong>加入主畫面</strong>」。</p>
-        `;
-        buttonsHTML = `
-            <div style="display: flex; gap: 15px; margin-top: 10px;">
-                <button id="iosShareButton" style="
-                    background-color: #007bff; /* 使用 Apple 的藍色 */
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 1em;
-                    transition: background-color 0.2s, transform 0.1s;
-                    min-width: 100px;
-                ">立即分享 (加入主畫面)</button>
-            </div>
-        `;
-    } else if (type === 'ios') { // 如果是 iOS 但不支持 Web Share API (備用方案)
+    if (type === 'ios') {
         contentHTML = `
             <p style="margin: 0; font-weight: bold;">在您的 Apple 裝置上安裝濟公報應用程式</p>
             <p style="margin: 0; font-size: 0.95em; opacity: 0.9;">請按照以下步驟，將本網站添加到主畫面：</p>
@@ -247,10 +173,10 @@ function showCustomInstallPrompt(type = 'default') {
         <button id="customCancelInstallButton" style="
             background-color: transparent;
             color: #bbb;
-            font-size: 1.5em;
+            font-size: 1.5em; 
             position: absolute;
-            top: 8px;
-            right: 12px;
+            top: 8px; 
+            right: 12px; 
             padding: 0 5px;
             line-height: 1;
             border: none;
@@ -259,270 +185,86 @@ function showCustomInstallPrompt(type = 'default') {
         ">×</button>
     `;
 
-    // 重新绑定事件监听器
     const customInstallAppButton = document.getElementById('customInstallAppButton');
     const customCancelInstallButton = document.getElementById('customCancelInstallButton');
-    const iosShareButton = document.getElementById('iosShareButton');
 
-    if (customInstallAppButton) {
+    if (customInstallAppButton) { 
         customInstallAppButton.addEventListener('click', async () => {
-            hideInstallPrompt();
+            hideInstallPrompt(); 
             if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt.prompt(); 
+                const { outcome } = await deferredPrompt.userChoice; 
                 console.log(`User response to the install prompt: ${outcome}`);
-                deferredPrompt = null;
-            }
-        });
-    }
-
-    if (iosShareButton) {
-        iosShareButton.addEventListener('click', async () => {
-            try {
-                await navigator.share({
-                    title: '濟公報',
-                    text: '安裝濟公報 PWA 應用程式',
-                    url: window.location.href
-                });
-                console.log('分享對話框已成功打開');
-                hideInstallPrompt();
-            } catch (err) {
-                console.error('Web Share API 錯誤:', err);
-                showToast('分享失敗，請從瀏覽器手動分享。', 'error'); // 使用 Toast
+                deferredPrompt = null; 
             }
         });
     }
 
     if (customCancelInstallButton) {
         customCancelInstallButton.addEventListener('click', () => {
-            hideInstallPrompt();
-            if (type !== 'ios') {
-                deferredPrompt = null;
+            hideInstallPrompt(); 
+            if (type !== 'ios') { 
+                deferredPrompt = null; 
             }
         });
     }
 
     promptOverlay.style.display = 'flex';
-    setTimeout(() => {
+    setTimeout(() => { 
         promptOverlay.style.opacity = '1';
-        promptContentDiv.style.transform = 'scale(1)';
-    }, 50);
+        promptContentDiv.style.transform = 'scale(1)'; 
+    }, 50); 
 }
-
-// 新增的客製化彈跳視窗函數，用於確認是否分享網址到瀏覽器打開
-// 這個函數現在不會被直接呼叫，因為我們選擇直接跳轉。
-// 但為了保持程式碼結構完整性，暫時保留。
-function showCustomBrowserPrompt() {
-    let promptOverlay = document.getElementById('customBrowserPromptOverlay');
-
-    if (!promptOverlay) {
-        promptOverlay = document.createElement('div');
-        promptOverlay.id = 'customBrowserPromptOverlay';
-        promptOverlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-            backdrop-filter: blur(5px);
-        `;
-        document.body.appendChild(promptOverlay);
-
-        const promptDiv = document.createElement('div');
-        promptDiv.id = 'customBrowserPrompt';
-        promptDiv.style.cssText = `
-            background-color: #333;
-            color: white;
-            padding: 20px 30px;
-            border-radius: 12px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-            z-index: 10000;
-            font-size: 1.1em;
-            text-align: center;
-            width: clamp(300px, 90vw, 500px);
-            box-sizing: border-box;
-            transform: scale(0.9);
-            transition: transform 0.3s ease-in-out;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        `;
-
-        if (document.body.classList.contains('dark-mode')) {
-            promptDiv.style.backgroundColor = '#2c2c2c';
-            promptDiv.style.boxShadow = '0 6px 20px rgba(255, 255, 255, 0.1)';
-        }
-
-        promptOverlay.appendChild(promptDiv);
-
-        promptOverlay.addEventListener('click', (e) => {
-            if (e.target === promptOverlay) {
-                hideCustomBrowserPrompt();
-            }
-        });
-    }
-
-    const promptContentDiv = document.getElementById('customBrowserPrompt');
-    if (!promptContentDiv) return;
-
-    promptContentDiv.innerHTML = `
-        <p style="margin: 0; font-weight: bold;">您正在應用程式模式下。</p>
-        <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">通知功能需要在瀏覽器中設定。</p>
-        <p style="margin: 0; font-size: 1.0em;">是否要在瀏覽器中開啟濟公報？</p>
-        <div style="display: flex; gap: 15px; margin-top: 10px;">
-            <button id="confirmOpenBrowserButton" style="
-                background-color: #28a745; /* Green for confirm */
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 1em;
-                transition: background-color 0.2s, transform 0.1s;
-                min-width: 100px;
-            ">確認</button>
-            <button id="cancelOpenBrowserButton" style="
-                background-color: #dc3545; /* Red for cancel */
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 1em;
-                transition: background-color 0.2s, transform 0.1s;
-                min-width: 100px;
-            ">取消</button>
-        </div>
-        <button id="closeBrowserPromptButton" style="
-            background-color: transparent;
-            color: #bbb;
-            font-size: 1.5em;
-            position: absolute;
-            top: 8px;
-            right: 12px;
-            padding: 0 5px;
-            line-height: 1;
-            border: none;
-            cursor: pointer;
-            transition: color 0.2s;
-        ">×</button>
-    `;
-
-    const confirmOpenBrowserButton = document.getElementById('confirmOpenBrowserButton');
-    const cancelOpenBrowserButton = document.getElementById('cancelOpenBrowserButton');
-    const closeBrowserPromptButton = document.getElementById('closeBrowserPromptButton');
-
-    if (confirmOpenBrowserButton) {
-        confirmOpenBrowserButton.addEventListener('click', () => {
-            hideCustomBrowserPrompt();
-            // 自動將瀏覽器導入濟公報網址
-            // 重要提醒：JavaScript 無法直接強制瀏覽器以「無痕模式」或「另一個瀏覽器應用程式」打開。
-            // `_blank` 參數會在新分頁或新視窗中打開 URL，
-            // 具體是否為無痕模式，或是否由使用者預設的非當前瀏覽器開啟，
-            // 都取決於使用者的瀏覽器設定和作業系統的處理方式。
-            window.open(JIGONG_NEWS_FULL_URL, '_blank'); // 使用新的完整 URL
-        });
-    }
-
-    if (cancelOpenBrowserButton) {
-        cancelOpenBrowserButton.addEventListener('click', () => {
-            hideCustomBrowserPrompt();
-        });
-    }
-
-    if (closeBrowserPromptButton) {
-        closeBrowserPromptButton.addEventListener('click', () => {
-            hideCustomBrowserPrompt();
-        });
-    }
-
-    promptOverlay.style.display = 'flex';
-    setTimeout(() => {
-        promptOverlay.style.opacity = '1';
-        promptContentDiv.style.transform = 'scale(1)';
-    }, 50);
-}
-
-// 隱藏客製化瀏覽器彈跳視窗
-function hideCustomBrowserPrompt() {
-    const promptOverlay = document.getElementById('customBrowserPromptOverlay');
-    const promptDiv = document.getElementById('customBrowserPrompt');
-    if (promptOverlay && promptDiv) {
-        promptOverlay.style.opacity = '0';
-        promptDiv.style.transform = 'scale(0.9)';
-
-        promptOverlay.addEventListener('transitionend', function handler() {
-            promptOverlay.style.display = 'none';
-            promptOverlay.removeEventListener('transitionend', handler);
-        }, { once: true });
-    }
-}
-
 
 function hideInstallPrompt() {
     const promptOverlay = document.getElementById('customInstallPromptOverlay');
     const promptDiv = document.getElementById('customInstallPrompt');
     if (promptOverlay && promptDiv) {
-        promptOverlay.style.opacity = '0';
-        promptDiv.style.transform = 'scale(0.9)';
-
+        promptOverlay.style.opacity = '0'; 
+        promptDiv.style.transform = 'scale(0.9)'; 
+        
         promptOverlay.addEventListener('transitionend', function handler() {
             promptOverlay.style.display = 'none';
-            promptOverlay.removeEventListener('transitionend', handler);
-        }, { once: true });
+            promptOverlay.removeEventListener('transitionend', handler); 
+        }, { once: true }); 
     }
 }
 
 // 更新 UI 狀態（按鈕文本和可用性）
 function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
-    console.log('更新通知 UI 狀態。訂閱狀態:', isSubscribed, '權限狀態:', permissionState, '沙箱環境:', isSandboxedEnvironment);
+    // 如果不是官方來源，直接禁用按鈕並顯示提示
     if (!isOfficialOrigin()) {
-        if (subscribeButton) {
+        if (subscribeButton) { // 確保按鈕存在
             subscribeButton.textContent = '❌ 非官方來源';
             subscribeButton.disabled = true;
-            subscribeButton.style.backgroundColor = '#6c757d';
+            subscribeButton.style.backgroundColor = '#6c757d'; 
             subscribeButton.title = '通知和安裝功能僅限於官方網站提供。';
-            subscribeButton.onclick = null;
-            subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+            // 移除所有事件监听器，避免误触
+            subscribeButton.onclick = null; 
+            subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
         }
         console.warn('PWA 運行於非官方來源，通知功能已禁用。');
-        return;
+        return; // 直接返回，不執行後續邏輯
     }
+
 
     if (isSandboxedEnvironment) {
-        subscribeButton.textContent = '➡️ 在瀏覽器中開啟濟公報';
+        subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
         subscribeButton.disabled = false;
-        subscribeButton.style.backgroundColor = '#6c757d';
-        subscribeButton.title = '您正在應用程式模式中。點擊將在瀏覽器中開啟濟公報。'; // 更新提示文字
-
-        subscribeButton.onclick = null;
-        subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
-
-        // === START: 關鍵修改 - 直接開啟網址，不再顯示確認彈窗 ===
-        subscribeButton.addEventListener('click', () => {
-            console.log('在沙箱環境中點擊按鈕，直接開啟濟公報網址:', JIGONG_NEWS_FULL_URL);
-            // 直接開啟濟公報網址，無需確認彈窗
-            // 重要提醒：JavaScript 無法直接強制瀏覽器以「無痕模式」或「另一個瀏覽器應用程式」打開。
-            // `_blank` 參數會在新分頁或新視窗中打開 URL，
-            // 具體是否為無痕模式，或是否由使用者預設的非當前瀏覽器開啟，
-            // 都取決於使用者的瀏覽器設定和作業系統的處理方式。
-            window.open(JIGONG_NEWS_FULL_URL, '_blank');
+        subscribeButton.style.backgroundColor = '#6c757d'; 
+        subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
+        
+        subscribeButton.onclick = null; 
+        subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+        subscribeButton.addEventListener('click', () => { 
+            const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
+            window.open(pwaDirectUrl, '_blank');
         });
-        // === END: 關鍵修改 ===
         return;
     }
-
-    subscribeButton.onclick = null;
-    subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+    
+    subscribeButton.onclick = null; 
+    subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
     subscribeButton.addEventListener('click', handleSubscribeButtonClick);
 
     if (permissionState === 'denied') {
@@ -544,12 +286,12 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
 }
 
 async function checkSubscriptionAndUI() {
-    console.log('檢查訂閱狀態和更新 UI...');
+    // 優先檢查官方來源
     if (!isOfficialOrigin()) {
-        updateNotificationUI(false, 'default', false);
+        updateNotificationUI(false, 'default', false); // 禁用按钮并显示非官方提示
         return;
     }
-
+    
     if (isSandboxed()) {
         updateNotificationUI(false, 'default', true);
         console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
@@ -560,35 +302,32 @@ async function checkSubscriptionAndUI() {
         updateNotificationUI(false, 'not-supported');
         subscribeButton.textContent = '瀏覽器不支持通知';
         subscribeButton.title = '您的瀏覽器不支持 Service Worker 或推播通知。';
-        console.warn('瀏覽器不支持 Service Worker 或推播通知。');
         return;
     }
 
     try {
         swRegistration = await navigator.serviceWorker.ready;
-        console.log('Service Worker 已準備好。');
         const subscription = await swRegistration.pushManager.getSubscription();
         const permissionState = Notification.permission;
-        updateNotificationUI(!!subscription, permissionState, isSandboxed());
+        updateNotificationUI(!!subscription, permissionState, isSandboxed()); 
     } catch (error) {
         console.error('檢查訂閱狀態時出錯或Service Worker未準備好:', error);
-        updateNotificationUI(false, 'error');
+        updateNotificationUI(false, 'error'); 
         subscribeButton.textContent = '通知功能錯誤';
         subscribeButton.disabled = true;
         subscribeButton.style.backgroundColor = '#dc3545';
         subscribeButton.title = '通知功能啟動失敗，請重新載入頁面或檢查瀏覽器設定。';
-        showToast('通知功能啟動失敗，請重新載入頁面。', 'error'); // 使用 Toast
     }
 }
 
 async function subscribeUser() {
-    console.log('嘗試訂閱用戶...');
     if (!swRegistration) {
-        showToast('Service Worker 尚未準備好，無法訂閱。請重新載入頁面。', 'error'); // 使用 Toast
+        alert('Service Worker 尚未準備好，無法訂閱。請重新載入頁面。');
         return;
     }
+    // 确保是在官方来源才执行订阅
     if (!isOfficialOrigin()) {
-        showToast('推播訂閱功能僅限於官方網站提供。', 'warning'); // 使用 Toast
+        alert('推播訂閱功能僅限於官方網站提供。');
         updateNotificationUI(false, Notification.permission);
         return;
     }
@@ -600,7 +339,7 @@ async function subscribeUser() {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
         console.warn('用戶拒絕了通知權限。');
-        showToast('您已拒絕通知權限。若要訂閱，請至瀏覽器設定中手動開啟。', 'warning'); // 使用 Toast
+        alert('您已拒絕通知權限。若要訂閱，請至瀏覽器設定中手動開啟。');
         updateNotificationUI(false, permission);
         return;
     }
@@ -611,12 +350,10 @@ async function subscribeUser() {
     try {
         const vapidPublicKeyResponse = await fetch(`${BACKEND_BASE_URL}/api/vapid-public-key`);
         if (!vapidPublicKeyResponse.ok) {
-            const errorText = await vapidPublicKeyResponse.text();
-            throw new Error(`無法獲取 VAPID 公鑰: ${vapidPublicKeyResponse.statusText} - ${errorText}`);
+            throw new Error(`無法獲取 VAPID 公鑰: ${vapidPublicKeyResponse.statusText}`);
         }
         const VAPID_PUBLIC_KEY = await vapidPublicKeyResponse.text();
         const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-        console.log('成功獲取 VAPID 公鑰。');
 
         const subscription = await swRegistration.pushManager.subscribe({
             userVisibleOnly: true,
@@ -635,12 +372,12 @@ async function subscribeUser() {
 
         if (response.ok) {
             console.log('訂閱成功並發送到後端。');
-            showToast('您已成功訂閱每日濟公報推播通知！', 'success'); // 使用 Toast
+            alert('您已成功訂閱每日濟公報推播通知！');
             updateNotificationUI(true, Notification.permission);
-            if ('periodicSync' in swRegistration) {
+            if ('periodicSync' in swRegistration) { 
                 try {
                     await swRegistration.periodicSync.register('content-check', {
-                        minInterval: 24 * 60 * 60 * 1000
+                        minInterval: 24 * 60 * 60 * 1000 
                     });
                     console.log('Periodic background sync registered successfully.');
                 } catch (e) {
@@ -650,30 +387,30 @@ async function subscribeUser() {
         } else {
             const errorText = await response.text();
             console.error('發送訂閱信息到後端失敗:', response.status, errorText);
-            showToast(`訂閱失敗: ${errorText || '未知錯誤'}`, 'error'); // 使用 Toast
-            await subscription.unsubscribe();
+            alert(`訂閱失敗: ${errorText || '未知錯誤'}`);
+            await subscription.unsubscribe(); 
         }
     } catch (error) {
         console.error('訂閱失敗:', error);
-        showToast(`訂閱失敗: ${error.message}`, 'error'); // 使用 Toast
+        alert(`訂閱失敗: ${error.message}`);
     } finally {
         checkSubscriptionAndUI();
     }
 }
 
 async function unsubscribeUser() {
-    console.log('嘗試取消訂閱用戶...');
     if (!swRegistration) {
-        showToast('Service Worker 尚未準備好，無法取消訂閱。請重新載入頁面。', 'error'); // 使用 Toast
+        alert('Service Worker 尚未準備好，無法取消訂閱。請重新載入頁面。');
         return;
     }
+    // 确保是在官方来源才执行取消订阅
     if (!isOfficialOrigin()) {
-        showToast('推播取消訂閱功能僅限於官方網站提供。', 'warning'); // 使用 Toast
-        updateNotificationUI(true, Notification.permission);
+        alert('推播取消訂閱功能僅限於官方網站提供。');
+        updateNotificationUI(true, Notification.permission); // 即使不是官方來源，也應顯示已訂閱狀態（如果之前是）
         return;
     }
 
-    const confirmUnsubscribe = confirm('您確定要取消訂閱濟公報推播通知嗎？'); // 這裡保留 confirm，因為它通常在非沙箱環境下運行
+    const confirmUnsubscribe = confirm('您確定要取消訂閱濟公報推播通知嗎？');
     if (!confirmUnsubscribe) {
         updateNotificationUI(true, Notification.permission);
         return;
@@ -698,12 +435,12 @@ async function unsubscribeUser() {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('發送取消訂閱信息到後端失敗:', response.status, errorText);
-                showToast(`取消訂閱失敗: ${errorText || '未知錯誤'}`, 'error'); // 使用 Toast
+                alert(`取消訂閱失敗: ${errorText || '未知錯誤'}`);
             }
 
             await subscription.unsubscribe();
             console.log('Push Subscription Unsubscribed.');
-            showToast('您已成功取消訂閱濟公報推播通知！', 'success'); // 使用 Toast
+            alert('您已成功取消訂閱濟公報推播通知！');
             updateNotificationUI(false, Notification.permission);
 
             if ('periodicSync' in swRegistration) {
@@ -716,19 +453,17 @@ async function unsubscribeUser() {
             }
         } else {
             console.log('您當前沒有訂閱。');
-            showToast('您當前沒有訂閱。', 'info'); // 使用 Toast
             updateNotificationUI(false, Notification.permission);
         }
     } catch (error) {
         console.error('取消訂閱失敗:', error);
-        showToast(`取消訂閱失敗: ${error.message}`, 'error'); // 使用 Toast
+        alert(`取消訂閱失敗: ${error.message}`);
     } finally {
         checkSubscriptionAndUI();
     }
 }
 
 async function handleSubscribeButtonClick() {
-    console.log('處理訂閱按鈕點擊...');
     const currentSubscription = await swRegistration.pushManager.getSubscription();
     if (currentSubscription) {
         unsubscribeUser();
@@ -739,24 +474,26 @@ async function handleSubscribeButtonClick() {
 
 // --- 初始化通知相關的功能 (Service Worker 註冊等) ---
 function initializeNotificationFeatures() {
-    console.log('初始化通知功能...');
+    // 優先檢查是否在官方來源。如果不是，禁用所有功能。
     if (!isOfficialOrigin()) {
-        updateNotificationUI(false, 'default', false);
+        updateNotificationUI(false, 'default', false); // 禁用按鈕並顯示非官方提示
         return;
     }
 
+    // 如果是沙箱環境，直接處理按鈕狀態並返回
     if (isSandboxed()) {
         updateNotificationUI(false, 'default', true);
         console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
         return;
     }
 
+    // 正常環境下的 Service Worker 註冊
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./service-worker.js')
             .then(function(registration) {
                 console.log('Service Worker 註冊成功，作用域: ', registration.scope);
                 swRegistration = registration;
-                checkSubscriptionAndUI();
+                checkSubscriptionAndUI(); // 註冊後立即檢查訂閱狀態並更新 UI
             })
             .catch(function(error) {
                 console.error('Service Worker 註冊失敗:', error);
@@ -765,14 +502,13 @@ function initializeNotificationFeatures() {
                 subscribeButton.disabled = true;
                 subscribeButton.style.backgroundColor = '#dc3545';
                 subscribeButton.title = 'Service Worker 註冊失敗，推播功能不可用。';
-                showToast('Service Worker 註冊失敗，通知功能不可用。', 'error'); // 使用 Toast
             });
     } else {
+        // 瀏覽器不支持 Service Worker
         updateNotificationUI(false, 'not-supported');
-        console.warn('瀏覽器不支持 Service Worker。');
-        showToast('您的瀏覽器不支持 Service Worker 或推播通知。', 'error'); // 使用 Toast
     }
 
+    // 在用戶修改通知權限後重新檢查 UI 狀態
     if ('permissions' in navigator && 'PushManager' in window) {
         navigator.permissions.query({ name: 'notifications' }).then(notificationPerm => {
             notificationPerm.onchange = () => {
@@ -785,42 +521,46 @@ function initializeNotificationFeatures() {
 
 // --- DOMContentLoaded 主入口 ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded 事件觸發。');
+    // 確保 subscribeButton 元素存在才初始化通知功能
     if (subscribeButton) {
-        initializeNotificationFeatures();
+        initializeNotificationFeatures(); // 調用初始化通知功能的函數
     } else {
         console.error('未能找到 ID 為 subscribe-btn 的按鈕。');
-        showToast('錯誤：未能找到通知按鈕。', 'error'); // 使用 Toast
     }
 
-    if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) {
+    // PWA 安裝提示邏輯
+    // 優先檢查是否已安裝或在受限環境，以及是否為官方來源
+    if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) { 
         if(isPWAInstalled()){
              console.log('PWA 已安裝，不顯示安裝提示。');
         }
+        // 如果是沙箱環境或非官方來源，安裝提示不會被顯示
     } else {
+        // 判斷設備類型以提供不同安裝提示
         if (isAppleMobileDevice() || isMacSafari()) {
             console.log('偵測到 Apple 裝置，準備顯示安裝指南。');
+            // 使用 localStorage 控制顯示頻率，避免過度打擾用戶
             const hasSeenInstallPrompt = localStorage.getItem('hasSeenAppleInstallPrompt');
             if (!hasSeenInstallPrompt) {
                 setTimeout(() => {
                     showCustomInstallPrompt('ios');
-                    localStorage.setItem('hasSeenAppleInstallPrompt', 'true');
-                }, 3000);
+                    localStorage.setItem('hasSeenAppleInstallPrompt', 'true'); // 設置標記，下次不再自動彈出
+                }, 3000); // 延遲3秒顯示iOS/macOS安裝提示，讓用戶先看到內容
             }
         } else {
+            // 其他瀏覽器 (主要是 Chromium based)，監聽 beforeinstallprompt 事件
             window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
+                e.preventDefault(); // 阻止瀏覽器默認的安裝提示
                 deferredPrompt = e;
                 console.log('beforeinstallprompt 事件已保存。');
-                showCustomInstallPrompt('default');
+                showCustomInstallPrompt('default'); // 顯示自定義安裝提示 (用於 Android/Desktop Chrome/Edge)
             });
 
             window.addEventListener('appinstalled', () => {
                 console.log('PWA 已成功安裝！');
-                showToast('PWA 已成功安裝！', 'success'); // 使用 Toast
                 hideInstallPrompt();
                 deferredPrompt = null;
-                checkSubscriptionAndUI();
+                checkSubscriptionAndUI(); // PWA 安裝後，可能需要重新檢查通知功能
             });
         }
     }
