@@ -1,40 +1,22 @@
-// jigongbao-pwa/frontend/public/pwa-notifications.js (最新修改版，完整 PWA 功能)
+// jigongbao-pwa/frontend/public/pwa-notifications.js (最新修改版，使用JS动态弹窗)
 
 // !!! 請在這裡替換為你的 Render 後端實際 URL !!!
-const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com/'; // <-- 替換這個！
+const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com/';
 
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
 
-// --- PWA 安装相关变量和 DOM 元素 ---
 let deferredPrompt; // 用于保存 beforeinstallprompt 事件
-// 确保这些 ID 在 index.html 中存在，并且是 PWA 安装提示弹窗的正确元素
-const installAppPrompt = document.getElementById('installAppPrompt'); 
-const installAppButton = document.getElementById('installAppButton'); 
-const closeInstallPromptButton = document.getElementById('closeInstallPrompt'); 
 
-
-// --- 辅助函数：检测PWA是否已安装 ---
+// --- 辅助函数：环境检测 ---
 function isPWAInstalled() {
-    // 检查 display-mode 是否为 standalone, fullscreen, 或 minimal-ui
-    if (window.matchMedia('(display-mode: standalone)').matches ||
-        window.matchMedia('(display-mode: fullscreen)').matches ||
-        window.matchMedia('(display-mode: minimal-ui)').matches) {
-        return true;
-    }
-    // 针对 iOS Safari "添加到主屏幕" 后的行为 (旧版判断，但仍可用)
-    if (navigator.standalone) {
-        return true;
-    }
-    return false;
+    return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 }
 
-// --- 辅助函数：检测沙箱或iframe环境 ---
 function isInIframe() {
     try {
         return window.self !== window.top;
     } catch (e) {
-        // 如果访问 window.top 被阻止 (例如跨域 iframe)，则认为在 iframe 中
         return true;
     }
 }
@@ -57,20 +39,108 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-// --- PWA 安装提示逻辑的显示/隐藏函数 ---
+// --- JS 动态安装提示弹窗逻辑 ---
+// 这个函数现在负责创建、显示和管理弹窗
 function showInstallPrompt() {
-    if (installAppPrompt) {
-        installAppPrompt.style.display = 'block'; // 显示安装提示
+    // 避免重复创建弹窗
+    if (document.getElementById('customInstallPrompt')) {
+        document.getElementById('customInstallPrompt').style.display = 'block';
+        return;
+    }
+
+    const promptDiv = document.createElement('div');
+    promptDiv.id = 'customInstallPrompt';
+    promptDiv.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #333;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        font-size: 1.1em;
+        text-align: center;
+        max-width: 90%;
+        box-sizing: border-box;
+        display: block; /* 确保显示 */
+    `;
+
+    // Dark Mode 适配（动态添加类名或直接设置样式）
+    if (document.body.classList.contains('dark-mode')) {
+        promptDiv.style.backgroundColor = '#2c2c2c';
+        promptDiv.style.boxShadow = '0 4px 10px rgba(255, 255, 255, 0.1)';
+    }
+
+    promptDiv.innerHTML = `
+        <p style="margin: 0 0 10px 0;">希望每天自動收到濟公報更新嗎？安裝應用程式以獲取最佳體驗和推播通知！</p>
+        <button id="customInstallAppButton" style="
+            background-color: #5a4fcf;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin-left: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        ">立即安裝</button>
+        <button id="customCancelInstallButton" style="
+            background-color: transparent;
+            color: #bbb;
+            font-size: 1.2em;
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            padding: 0 5px;
+            line-height: 1;
+            border: none;
+            cursor: pointer;
+        ">×</button>
+    `;
+
+    document.body.appendChild(promptDiv);
+
+    // 绑定事件监听器到动态创建的按钮
+    const customInstallAppButton = document.getElementById('customInstallAppButton');
+    const customCancelInstallButton = document.getElementById('customCancelInstallButton');
+
+    if (customInstallAppButton) {
+        customInstallAppButton.addEventListener('click', async () => {
+            hideInstallPrompt(); // 隐藏自定义提示
+            if (deferredPrompt) {
+                deferredPrompt.prompt(); // 触发浏览器默认的安装提示
+                const { outcome } = await deferredPrompt.userChoice; // 等待用户选择
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null; // 清除事件
+                // 安装后可能页面会以 standalone 模式重新加载
+            }
+        });
+    }
+
+    if (customCancelInstallButton) {
+        customCancelInstallButton.addEventListener('click', () => {
+            hideInstallPrompt(); // 隐藏自定义提示
+            deferredPrompt = null; // 清除事件
+        });
     }
 }
 
 function hideInstallPrompt() {
-    if (installAppPrompt) {
-        installAppPrompt.style.display = 'none';
+    const promptDiv = document.getElementById('customInstallPrompt');
+    if (promptDiv) {
+        promptDiv.style.display = 'none';
+        // 也可以选择移除元素，避免DOM堆积，但本次只隐藏
+        // promptDiv.remove();
     }
 }
 
-// --- 更新通知按钮 UI 状态的函数 ---
+
+// --- updateNotificationUI, checkSubscriptionAndUI 等函数保持不变 ---
+
+// 更新 UI 状态（按钮文本和可用性）
 function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
     if (isSandboxedEnvironment) {
         subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
@@ -78,45 +148,38 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.style.backgroundColor = '#6c757d'; // 灰色
         subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
         
-        // 移除所有旧的事件监听器，只绑定跳转逻辑
-        subscribeButton.onclick = null; // 清除之前可能存在的 onclick 属性
+        subscribeButton.onclick = null; // 清除可能存在的 onclick 属性
         subscribeButton.removeEventListener('click', handleSubscribeButtonClick); // 移除订阅逻辑监听器
-        
-        subscribeButton.addEventListener('click', () => {
+        subscribeButton.addEventListener('click', () => { // 重新绑定跳转逻辑
             const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; // 确保是你的PWA部署的绝对路径
             window.open(pwaDirectUrl, '_blank');
         });
         return;
     }
     
-    // 正常环境下的推播按钮逻辑
-    // 移除旧的跳转逻辑，确保绑定的是订阅/取消订阅逻辑
     subscribeButton.onclick = null; // 清除可能存在的 onclick 属性
-    subscribeButton.removeEventListener('click', handleSubscribeButtonClick); // 移除之前的订阅逻辑监听器
-    subscribeButton.addEventListener('click', handleSubscribeButtonClick); // 重新绑定订阅逻辑
-
+    subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+    subscribeButton.addEventListener('click', handleSubscribeButtonClick);
 
     if (permissionState === 'denied') {
         subscribeButton.textContent = '🚫 通知已拒絕';
         subscribeButton.disabled = true;
-        subscribeButton.style.backgroundColor = '#dc3545'; // 红色
+        subscribeButton.style.backgroundColor = '#dc3545';
         subscribeButton.title = '請在瀏覽器設定中啟用通知權限。';
     } else if (isSubscribed) {
         subscribeButton.textContent = '🔕 關閉通知';
         subscribeButton.disabled = false;
-        subscribeButton.style.backgroundColor = '#6c757d'; // 灰色
+        subscribeButton.style.backgroundColor = '#6c757d';
         subscribeButton.title = '點擊以取消訂閱推播通知。';
     } else {
         subscribeButton.textContent = '🔔 開啟通知';
         subscribeButton.disabled = false;
-        subscribeButton.style.backgroundColor = '#007bff'; // 蓝色
+        subscribeButton.style.backgroundColor = '#007bff';
         subscribeButton.title = '點擊以訂閱每日推播通知。';
     }
 }
 
-// --- 检查订阅状态并更新 UI 的函数 ---
 async function checkSubscriptionAndUI() {
-    // 优先检测是否在沙箱环境 (这里重复检查一次以确保即使异步调用也能正确识别)
     if (isSandboxed()) {
         updateNotificationUI(false, 'default', true);
         console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
@@ -134,7 +197,7 @@ async function checkSubscriptionAndUI() {
         swRegistration = await navigator.serviceWorker.ready;
         const subscription = await swRegistration.pushManager.getSubscription();
         const permissionState = Notification.permission;
-        updateNotificationUI(!!subscription, permissionState, isSandboxed()); // 传递 isSandboxed() 结果
+        updateNotificationUI(!!subscription, permissionState, isSandboxed()); 
     } catch (error) {
         console.error('檢查訂閱狀態時出錯或Service Worker未準備好:', error);
         updateNotificationUI(false, 'error'); 
@@ -145,7 +208,7 @@ async function checkSubscriptionAndUI() {
     }
 }
 
-// --- 订阅通知的逻辑 ---
+// --- subscribeUser, unsubscribeUser, handleSubscribeButtonClick 函数保持不变 ---
 async function subscribeUser() {
     if (!swRegistration) {
         alert('Service Worker 尚未準備好，無法訂閱。請重新載入頁面。');
@@ -224,7 +287,6 @@ async function subscribeUser() {
     }
 }
 
-// --- 取消订阅通知的逻辑 ---
 async function unsubscribeUser() {
     if (!swRegistration) {
         alert('Service Worker 尚未準備好，無法取消訂閱。請重新載入頁面。');
@@ -285,7 +347,6 @@ async function unsubscribeUser() {
     }
 }
 
-// --- 订阅/取消订阅按钮点击的统一处理函数 ---
 async function handleSubscribeButtonClick() {
     const currentSubscription = await swRegistration.pushManager.getSubscription();
     if (currentSubscription) {
@@ -339,56 +400,42 @@ function initializeNotificationFeatures() {
 
 // --- DOMContentLoaded 主入口 ---
 document.addEventListener('DOMContentLoaded', () => {
-    // PWA 安装提示逻辑 (确保 DOM 元素已加载)
-    if (installAppPrompt && installAppButton && closeInstallPromptButton) {
-        // 如果是 PWA 已安装模式，则不显示安装提示，直接初始化通知功能
-        if (isPWAInstalled()) {
-            console.log('PWA 已安裝，不顯示安裝提示。');
-            hideInstallPrompt(); // 隐藏安装提示
-        } else if (isSandboxed()) {
-            console.log('PWA 運行於受限沙箱環境中，不顯示安裝提示。');
-            hideInstallPrompt(); // 沙箱中也不显示安装提示
-        } else {
-            // 如果不是已安装 PWA 也不是沙箱，则监听 beforeinstallprompt 事件
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                console.log('beforeinstallprompt 事件已保存。');
-                showInstallPrompt(); // 显示自定义安装提示
-            });
-
-            window.addEventListener('appinstalled', () => {
-                console.log('PWA 已成功安裝！');
-                hideInstallPrompt();
-                deferredPrompt = null;
-                // 安装后，PWA 会以 standalone 模式运行，检查通知功能
-                checkSubscriptionAndUI(); 
-            });
-
-            // 为安装提示按钮添加事件监听器
-            installAppButton.addEventListener('click', async () => {
-                hideInstallPrompt();
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    console.log(`用户对安装的响应: ${outcome}`);
-                    deferredPrompt = null;
-                }
-            });
-
-            closeInstallPromptButton.addEventListener('click', () => {
-                hideInstallPrompt();
-                deferredPrompt = null;
-            });
-        }
-    } else {
-        console.warn('PWA 安装提示相关 DOM 元素未找到。');
-    }
-
     // 确保 subscribeButton 元素存在才初始化通知功能
     if (subscribeButton) {
         initializeNotificationFeatures(); // 调用初始化通知功能的函数
     } else {
         console.error('未能找到 ID 为 subscribe-btn 的按钮。');
+    }
+
+    // PWA 安装提示逻辑 (确保 DOM 元素已加载)
+    // 这里的 installAppModal, installAppBtn, cancelInstallBtn 都是通过JS动态创建的
+    // 所以，这里不再需要检查它们是否存在，而是确保它们的事件绑定在 showInstallPrompt 函数内部
+    // 或者，将 installAppBtn 和 cancelInstallBtn 的事件绑定放到这里，它们在 showInstallPrompt 内部通过 document.getElementById 获取
+    
+    // 如果是 PWA 已安装模式，则不显示安装提示，直接初始化通知功能 (这部分逻辑已经在 DOMContentLoaded 外面)
+    if (isPWAInstalled() || isSandboxed()) { // 这里的判断与 DOMContentLoaded 外面的 if 逻辑重叠
+        // console.log('当前环境为已安装 PWA 或受限沙箱，不显示安装提示。');
+        // hideInstallPrompt(); // 这里的 hideInstallPrompt() 应该由 showInstallPrompt() 自己判断
+        // 已经通过 initializeNotificationFeatures() 内部调用 updateNotificationUI 处理了沙箱按钮
+        // 对于已安装的 PWA，我们只需确保不显示安装提示
+        if(isPWAInstalled()){
+             console.log('PWA 已安裝，不顯示安裝提示。');
+             // 这里不需要 hideInstallPrompt() 因为还没有 showInstallPrompt()
+        }
+    } else {
+        // 如果不是已安装 PWA 也不是沙箱，则监听 beforeinstallprompt 事件
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('beforeinstallprompt 事件已保存。');
+            showInstallPrompt(); // 显示自定义安装提示
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA 已成功安裝！');
+            hideInstallPrompt();
+            deferredPrompt = null;
+            checkSubscriptionAndUI(); // PWA 安装后，可能需要重新检查通知功能
+        });
     }
 });
