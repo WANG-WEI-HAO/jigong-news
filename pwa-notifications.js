@@ -1,15 +1,13 @@
 // jigongbao-pwa/frontend/public/pwa-notifications.js
 
 // !!! 請在這裡替換為你的 Render 後端實際 URL !!!
-const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com'; // 修正錯字：jonggong -> jigong
+const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
 const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io'; 
 
-// === START: 關鍵修改 ===
 // 允許的本地開發主機名稱列表
 const ALLOWED_DEV_HOSTNAMES = ['localhost', '127.0.0.1'];
-// === END: 關鍵修改 ===
 
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
@@ -30,8 +28,6 @@ function isInIframe() {
 }
 
 function isSandboxed() {
-    // 這裡我們擴展一下沙箱的定義：如果在 iframe 裡，或者在已安裝的 PWA 裡，
-    // 對於通知功能來說，都算是需要「跳轉到瀏覽器」的受限環境。
     return isInIframe() || isPWAInstalled();
 }
 
@@ -45,17 +41,13 @@ function isMacSafari() {
     return navigator.userAgent.includes('Macintosh') && navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
 }
 
-// === START: 關鍵修改 ===
 // 检测当前页面是否运行在官方域名上
 function isOfficialOrigin() {
-    // 檢查是否為允許的本地開發主機
     if (ALLOWED_DEV_HOSTNAMES.includes(window.location.hostname)) {
         return true;
     }
-    // 檢查是否為官方部署的域名
     return window.location.origin === OFFICIAL_PWA_ORIGIN;
 }
-// === END: 關鍵修改 ===
 
 // 辅助函数：将 Base64 字符串转换为 Uint8Array
 function urlBase64ToUint8Array(base64String) {
@@ -73,7 +65,6 @@ function urlBase64ToUint8Array(base64String) {
 
 // --- JS 动态安装提示弹窗逻辑 ---
 function showCustomInstallPrompt(type = 'default') { 
-    // 只有在官方域名下才显示安装提示
     if (!isOfficialOrigin()) {
         console.warn('非官方網域，不顯示安裝提示。');
         return;
@@ -143,7 +134,28 @@ function showCustomInstallPrompt(type = 'default') {
     let contentHTML = '';
     let buttonsHTML = '';
 
-    if (type === 'ios') {
+    // === START: 關鍵修改 - 整合 Web Share API ===
+    if (type === 'ios' && navigator.share) { // 如果是 iOS 類型且支持 Web Share API
+        contentHTML = `
+            <p style="margin: 0; font-weight: bold;">在您的 Apple 裝置上安裝濟公報應用程式</p>
+            <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">點擊下方按鈕，然後選擇「<strong>加入主畫面</strong>」。</p>
+        `;
+        buttonsHTML = `
+            <div style="display: flex; gap: 15px; margin-top: 10px;">
+                <button id="iosShareButton" style="
+                    background-color: #007bff; /* 使用 Apple 的藍色 */
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 1em;
+                    transition: background-color 0.2s, transform 0.1s;
+                    min-width: 100px;
+                ">立即分享 (加入主畫面)</button>
+            </div>
+        `;
+    } else if (type === 'ios') { // 如果是 iOS 但不支持 Web Share API (理論上現代 iOS Safari 都支持)
         contentHTML = `
             <p style="margin: 0; font-weight: bold;">在您的 Apple 裝置上安裝濟公報應用程式</p>
             <p style="margin: 0; font-size: 0.95em; opacity: 0.9;">請按照以下步驟，將本網站添加到主畫面：</p>
@@ -175,6 +187,7 @@ function showCustomInstallPrompt(type = 'default') {
             </div>
         `;
     }
+    // === END: 關鍵修改 ===
 
     promptContentDiv.innerHTML = `
         ${contentHTML}
@@ -194,8 +207,10 @@ function showCustomInstallPrompt(type = 'default') {
         ">×</button>
     `;
 
+    // 重新绑定事件监听器
     const customInstallAppButton = document.getElementById('customInstallAppButton');
     const customCancelInstallButton = document.getElementById('customCancelInstallButton');
+    const iosShareButton = document.getElementById('iosShareButton');
 
     if (customInstallAppButton) { 
         customInstallAppButton.addEventListener('click', async () => {
@@ -208,6 +223,26 @@ function showCustomInstallPrompt(type = 'default') {
             }
         });
     }
+    
+    // === START: 關鍵修改 - 綁定 Web Share API 事件 ===
+    if (iosShareButton) {
+        iosShareButton.addEventListener('click', async () => {
+            try {
+                // 定义分享的内容
+                await navigator.share({
+                    title: '濟公報',
+                    text: '安裝濟公報 PWA 應用程式',
+                    url: window.location.href // 分享当前页面 URL
+                });
+                console.log('分享對話框已成功打開');
+                hideInstallPrompt(); // 分享后隐藏提示
+            } catch (err) {
+                console.error('Web Share API 錯誤:', err);
+                // 用户可能取消了分享，或者浏览器不支持
+            }
+        });
+    }
+    // === END: 關鍵修改 ===
 
     if (customCancelInstallButton) {
         customCancelInstallButton.addEventListener('click', () => {
