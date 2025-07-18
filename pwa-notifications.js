@@ -1,4 +1,4 @@
-// jigongbao-pwa/frontend/public/pwa-notifications.js (最新修改版，含沙箱检测)
+// jigongbao-pwa/frontend/public/pwa-notifications.js (最新修改版，完整 PWA 功能)
 
 // !!! 請在這裡替換為你的 Render 後端實際 URL !!!
 const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com/'; // <-- 替換這個！
@@ -6,30 +6,57 @@ const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com/'; // <-- 替
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
 
-// --- 新增：检测沙箱或iframe环境的辅助函数 ---
+// --- 新增 PWA 安装相关变量和 DOM 元素 ---
+let deferredPrompt; // 用于保存 beforeinstallprompt 事件
+const installAppModal = document.getElementById('installAppModal'); // 确保这个 ID 存在于 index.html
+const installAppBtn = document.getElementById('installAppBtn');   // 确保这个 ID 存在于 index.html
+const cancelInstallBtn = document.getElementById('cancelInstallBtn'); // 确保这个 ID 存在于 index.html
+
+
+// --- 辅助函数：检测PWA是否已安装 ---
+function isPWAInstalled() {
+    // 检查 display-mode 是否为 standalone, fullscreen, 或 minimal-ui
+    // 或者检查 navigator.standalone (iOS Safari)
+    if (window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        window.matchMedia('(display-mode: minimal-ui)').matches) {
+        return true;
+    }
+    // 针对 iOS Safari "添加到主屏幕" 后的行为
+    if (navigator.standalone) {
+        return true;
+    }
+    return false;
+}
+
+// --- 辅助函数：检测沙箱或iframe环境 ---
 function isInIframe() {
     try {
         return window.self !== window.top;
     } catch (e) {
-        // 如果访问 window.top 被阻止 (例如跨域 iframe)，则认为在 iframe 中
         return true;
     }
 }
 
 function isSandboxed() {
-    // 检查文档是否被沙箱化
-    // 现代浏览器中，document.featurePolicy 或 document.permissions 也可用于更细粒度检测
-    // 但最直接的是检查是否在 iframe 中且功能受限
-    if (isInIframe()) {
-        // 如果在 iframe 中，并且当前 document.body 没有直接的 allow-modals 权限，
-        // 或者 Service Worker 无法注册，我们可以认为它处于受限沙箱。
-        // 最直接的判断还是基于 Service Worker 是否能成功注册。
-        return true; // 简单的判断：如果在 iframe 里就认为是沙箱
-    }
-    return false;
+    return isInIframe(); // 简化判断：如果在 iframe 里就认为是沙箱
 }
 
 // 辅助函数：将 Base64 字符串转换为 Uint8Array
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// 更新 UI 状态（按钮文本和可用性）
 function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
     if (isSandboxedEnvironment) {
         subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
@@ -38,73 +65,69 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
         
         subscribeButton.onclick = () => {
-            // 明确指定你的 PWA 的绝对根 URL，加上参数
-            // 请确保这个 URL 是你的 GitHub Pages PWA 的直接链接
             const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
-            
-            // 使用 _blank 目标，这是标准 Web 行为，告诉浏览器在新上下文打开。
-            // 至于是否是外部浏览器，由浏览器/操作系统决定，JS无法强制。
             window.open(pwaDirectUrl, '_blank');
         };
         return;
     }
-    // --- 正常环境下的逻辑 ---
+    
+    // 确保按钮点击事件是订阅/取消订阅逻辑，而不是跳转
+    // 移除可能存在的旧的onclick属性赋值
+    subscribeButton.onclick = null; 
+    // 移除所有旧的事件监听器，避免重复添加，并重新添加
+    // 为了防止重复添加，可以移除所有旧的监听器再添加
+    subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+    subscribeButton.addEventListener('click', handleSubscribeButtonClick);
+
     if (permissionState === 'denied') {
         subscribeButton.textContent = '🚫 通知已拒絕';
         subscribeButton.disabled = true;
-        subscribeButton.style.backgroundColor = '#dc3545'; // 红色
+        subscribeButton.style.backgroundColor = '#dc3545';
         subscribeButton.title = '請在瀏覽器設定中啟用通知權限。';
     } else if (isSubscribed) {
         subscribeButton.textContent = '🔕 關閉通知';
         subscribeButton.disabled = false;
-        subscribeButton.style.backgroundColor = '#6c757d'; // 灰色
+        subscribeButton.style.backgroundColor = '#6c757d';
         subscribeButton.title = '點擊以取消訂閱推播通知。';
     } else {
         subscribeButton.textContent = '🔔 開啟通知';
         subscribeButton.disabled = false;
-        subscribeButton.style.backgroundColor = '#007bff'; // 蓝色
+        subscribeButton.style.backgroundColor = '#007bff';
         subscribeButton.title = '點擊以訂閱每日推播通知。';
     }
-
-    // 确保按钮点击事件是订阅/取消订阅逻辑，而不是跳转
-    subscribeButton.onclick = null; // 清除之前的跳转逻辑
-    subscribeButton.addEventListener('click', handleSubscribeButtonClick); // 重新绑定订阅逻辑
 }
 
 // 检查订阅状态并更新 UI
 async function checkSubscriptionAndUI() {
-    // 优先检测是否在沙箱环境
     if (isSandboxed()) {
-        updateNotificationUI(false, 'default', true); // 强制显示沙箱提示
+        updateNotificationUI(false, 'default', true);
         console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
         return;
     }
 
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        updateNotificationUI(false, 'not-supported'); // 使用一个特殊状态表示不支持
-        subscribeButton.textContent = '瀏覽器不支持通知'; // 覆盖文本
-        subscribeButton.title = '您的瀏覽器不支持 Service Worker 或推播通知。'; // 覆盖提示
+        updateNotificationUI(false, 'not-supported');
+        subscribeButton.textContent = '瀏覽器不支持通知';
+        subscribeButton.title = '您的瀏覽器不支持 Service Worker 或推播通知。';
         return;
     }
 
     try {
-        // 等待 Service Worker 准备好，如果 Service Worker 注册失败，swRegistration 会为 null，这里会抛错
         swRegistration = await navigator.serviceWorker.ready;
         const subscription = await swRegistration.pushManager.getSubscription();
         const permissionState = Notification.permission;
         updateNotificationUI(!!subscription, permissionState);
     } catch (error) {
         console.error('檢查訂閱狀態時出錯或Service Worker未準備好:', error);
-        // 如果 Service Worker 注册失败，也会走到这里
-        updateNotificationUI(false, 'error'); // 使用一个特殊状态表示错误
-        subscribeButton.textContent = '通知功能錯誤'; // 覆盖文本
+        updateNotificationUI(false, 'error'); // 使用 'error' 状态来表示 Service Worker 启动问题
+        subscribeButton.textContent = '通知功能錯誤';
         subscribeButton.disabled = true;
         subscribeButton.style.backgroundColor = '#dc3545';
         subscribeButton.title = '通知功能啟動失敗，請重新載入頁面或檢查瀏覽器設定。';
     }
 }
 
-// 订阅通知的逻辑
+// 订阅通知的逻辑 (subscribeUser, unsubscribeUser 保持不变)
 async function subscribeUser() {
     if (!swRegistration) {
         alert('Service Worker 尚未準備好，無法訂閱。請重新載入頁面。');
@@ -161,7 +184,6 @@ async function subscribeUser() {
             updateNotificationUI(true, Notification.permission);
             if ('periodicSync' in swRegistration) {
                 try {
-                    // await navigator.permissions.request({ name: 'periodic-background-sync' }); // 这行依然注释掉
                     await swRegistration.periodicSync.register('content-check', {
                         minInterval: 24 * 60 * 60 * 1000
                     });
@@ -184,7 +206,6 @@ async function subscribeUser() {
     }
 }
 
-// 取消订阅通知的逻辑
 async function unsubscribeUser() {
     if (!swRegistration) {
         alert('Service Worker 尚未準備好，無法取消訂閱。請重新載入頁面。');
@@ -255,34 +276,60 @@ async function handleSubscribeButtonClick() {
     }
 }
 
-// 绑定按钮事件和 Service Worker 注册（在 DOMContentLoaded 确保元素加载）
+// 首次绑定事件，确保 DOM 元素已加载
 document.addEventListener('DOMContentLoaded', () => {
-    // 首次加载时就立即检查是否在沙箱，这会影响 Service Worker 注册前的 UI 状态
-    if (isSandboxed()) {
-        updateNotificationUI(false, 'default', true);
-        console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
-        return; // 沙箱环境下不尝试注册 Service Worker 和后续逻辑
+    // 确保按钮元素存在，并且只绑定一次
+    if (subscribeButton) {
+        // updateNotificationUI 内部会负责 addEventListener，这里不需要重复添加
     }
 
-    // 正常环境下的 Service Worker 注册
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./service-worker.js')
-            .then(function(registration) {
-                console.log('Service Worker 註冊成功，作用域: ', registration.scope);
-                swRegistration = registration;
-                checkSubscriptionAndUI(); // 注册后立即检查订阅状态并更新 UI
-            })
-            .catch(function(error) {
-                console.error('Service Worker 註冊失敗:', error);
-                updateNotificationUI(false, 'registration-failed'); // 新增一个状态用于注册失败
-                subscribeButton.textContent = '通知服務無法啟動';
-                subscribeButton.disabled = true;
-                subscribeButton.style.backgroundColor = '#dc3545';
-                subscribeButton.title = 'Service Worker 註冊失敗，推播功能不可用。';
-            });
-    } else {
-        // 浏览器不支持 Service Worker
-        updateNotificationUI(false, 'not-supported');
+    // --- PWA 安装逻辑 ---
+    // 如果是 PWA 已安装模式，则不显示安装提示，直接初始化通知功能
+    if (isPWAInstalled()) {
+        console.log('PWA 已安裝，不顯示安裝提示。');
+        initializeNotificationFeatures(); // 即使已安装，通知功能也要正常
+        return; // 已安装则不再执行下面的 beforeinstallprompt 监听和沙箱检查
+    }
+
+    // 如果不在沙箱，且未安装 PWA，则监听 beforeinstallprompt 事件
+    if (!isSandboxed()) {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('beforeinstallprompt 事件已保存。');
+            showInstallPrompt(); // 显示自定义安装提示
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA 已成功安裝！');
+            hideInstallPrompt();
+            deferredPrompt = null;
+            checkSubscriptionAndUI(); // PWA 安装后，可能需要重新检查通知功能
+        });
+    }
+
+    // --- 初始化通知相关的功能 (Service Worker 注册等) ---
+    // 确保这个函数在 DOMContentLoaded 中被调用，因为其他逻辑依赖它
+    initializeNotificationFeatures();
+
+    // 为安装提示按钮添加事件监听器 (确保它们在 DOMContentLoaded 后被绑定)
+    if (installAppBtn) {
+        installAppBtn.addEventListener('click', async () => {
+            hideInstallPrompt();
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`用户对安装的响应: ${outcome}`);
+                deferredPrompt = null;
+            }
+        });
+    }
+
+    if (cancelInstallBtn) {
+        cancelInstallBtn.addEventListener('click', () => {
+            hideInstallPrompt();
+            deferredPrompt = null;
+        });
     }
 
     // 在用户修改通知权限后重新检查 UI 状态
