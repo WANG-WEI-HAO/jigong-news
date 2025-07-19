@@ -1,6 +1,7 @@
 // frontend/public/service-worker.js
 
-const CACHE_NAME = 'jigong-pwa-cache-v2'; // 如果内容有大变化，可以更新版本号以强制更新缓存
+// **重要提醒：每次您有靜態檔案 (HTML, CSS, JS) 或 Service Worker 本身的大更新時，請修改此版本號！**
+const CACHE_NAME = 'jigong-pwa-cache-v2';
 const urlsToCache = [
   './',
   './index.html',
@@ -8,14 +9,17 @@ const urlsToCache = [
   './pwa-notifications.js', // 更新为新的合并后的 JS 文件名
   'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css',
   'https://cdn.jsdelivr.net/npm/flatpickr',
-  './zh-tw.js', 
+  './zh-tw.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  // 确保你的分享图标也缓存
-  './ICON/facebook.png',
-  './ICON/instagram.png',
-  './ICON/line.png',
-  './ICON/link.png'
+  // 确保你的分享图标也缓存 (假設這四個ICON資料夾內)
+  './icons/facebook.png',
+  './icons/instagram.png',
+  './icons/line.png',
+  './icons/link.png',
+  // 新增 iOS 安裝提示圖示
+  './icons/ios加到主畫面icon.jpg',
+  './icons/ios分享icon.jpg'
 ];
 
 self.addEventListener('install', event => {
@@ -65,8 +69,8 @@ self.addEventListener('activate', event => {
       console.error('[Service Worker] Activation failed:', error);
       // 可以在这里显示一个通知，通知用户 Service Worker 激活失败
       // self.registration.showNotification('Service Worker Error', {
-      //   body: '無法完全啟用離線功能和推播通知。',
-      //   icon: './icons/icon-192.png'
+      //    body: '無法完全啟用離線功能和推播通知。',
+      //    icon: './icons/icon-192.png'
       // });
       throw error; // 抛出错误以在控制台显示堆栈信息
     })
@@ -74,6 +78,7 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // 對於 posts.json，優先從網路獲取最新數據，並更新快取
   if (event.request.url.includes('posts.json')) {
     event.respondWith(
       fetch(event.request)
@@ -86,11 +91,12 @@ self.addEventListener('fetch', event => {
           }
           return networkResponse;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => caches.match(event.request)) // 如果網路失敗，則回傳快取內容
     );
     return;
   }
 
+  // 對於其他資源，嘗試從快取中獲取，否則從網路獲取
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -134,6 +140,7 @@ async function checkForUpdatesAndNotify() {
   try {
     console.log('[Service Worker] 背景同步：正在檢查 posts.json 更新...');
     const cache = await caches.open(CACHE_NAME);
+    // 強制從網路獲取 posts.json，不使用快取
     const request = new Request('./posts.json', { cache: 'no-store' });
 
     const networkResponse = await fetch(request);
@@ -150,7 +157,7 @@ async function checkForUpdatesAndNotify() {
 
       if (networkText !== cachedText) {
         console.log('[Service Worker] 背景檢查發現新內容，發送推播通知。');
-        await cache.put(request, networkResponse.clone());
+        await cache.put(request, networkResponse.clone()); // 更新快取
         self.registration.showNotification('濟公報有新內容！', {
           body: '點擊查看最新聖賢語錄。',
           icon: './icons/icon-192.png',
@@ -165,7 +172,7 @@ async function checkForUpdatesAndNotify() {
       }
     } else {
       console.log('[Service Worker] 背景同步：無快取版本，正在快取新內容。');
-      await cache.put(request, networkResponse.clone());
+      await cache.put(request, networkResponse.clone()); // 快取新內容
     }
   } catch (error) {
     console.error('[Service Worker] 背景內容檢查出錯：', error);
