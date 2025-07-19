@@ -155,7 +155,7 @@
     .action-button:hover { background-color: #218838; }
     #clear-cache-btn { background-color: #ffc107; color: #212529; }
     #clear-cache-btn:hover { background-color: #e0a800; }
-    .close-button {
+    .close-button { /* General close button for settings panel and custom prompts */
       background: none; border: none; font-size: 2em; color: #6c757d;
       cursor: pointer; line-height: 1; padding: 0 5px; transition: color 0.2s;
     }
@@ -248,7 +248,7 @@
       top: 4px; /* 與上下邊緣保持 4px */
       left: 4px; /* 初始位置：靠左 4px */
       border-radius: 50%; 
-      transition: left 0.3s ease; 
+      transition: left 0.3s ease; /* 拉 bar 的動畫 */
       box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
     }
     .toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch { 
@@ -263,64 +263,75 @@
       border-radius: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
 
-    /* Styles for Custom Install Prompt Overlay */
-    #customInstallPromptOverlay {
+    /* === Reusable styles for custom prompts overlays === */
+    .custom-prompt-overlay {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.7); /* 半透明黑色背景 */
-        backdrop-filter: blur(5px); /* 模糊背景效果 */
-        -webkit-backdrop-filter: blur(5px); /* 兼容 Safari */
-        z-index: 10000; /* 確保在最上層 */
-        display: flex; /* 使用 flexbox 居中 */
-        justify-content: center; /* 水平居中 */
-        align-items: center; /* 垂直居中 */
-        opacity: 0;
-        transition: opacity 0.3s ease-in-out;
+        background-color: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        z-index: 10000;
+        display: flex; /* 預設為 flex 以便內容居中 */
+        justify-content: center;
+        align-items: center;
+        opacity: 0; /* 預設隱藏，通過 opacity 過渡 */
+        visibility: hidden; /* 用於隱藏元素，不佔空間，且可被 transition 影響 */
+        transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; /* 半透明層的過渡 */
         pointer-events: none; /* 預設不響應事件，只有 visible 時才響應 */
     }
-    #customInstallPromptOverlay.visible {
+    .custom-prompt-overlay.visible {
         opacity: 1;
+        visibility: visible; /* 顯示時可見 */
         pointer-events: auto; /* 顯示時響應事件 */
     }
-    #customInstallPrompt {
-        background-color: #333; /* 彈窗背景色 */
+    /* === Reusable style for the content box of the prompt === */
+    .custom-prompt {
+        background-color: #333;
         color: white;
         padding: 25px 35px;
         border-radius: 12px;
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
         font-size: 1.1em;
         text-align: center;
-        width: clamp(300px, 90vw, 500px); /* 響應式寬度 */
+        width: clamp(300px, 90vw, 500px);
         box-sizing: border-box;
-        transform: scale(0.9); /* 初始縮小，配合過渡動畫 */
-        transition: transform 0.3s ease-in-out;
+        transform: scale(0.9); /* 內容區的初始縮小狀態 */
+        transition: transform 0.3s ease-in-out; /* 內容區的縮放過渡 */
         position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 15px;
     }
-    body.dark-mode #customInstallPrompt {
+    /* 當父層 .custom-prompt-overlay 有 .visible class 時，內容區放大 */
+    .custom-prompt-overlay.visible .custom-prompt {
+        transform: scale(1);
+    }
+
+    body.dark-mode .custom-prompt {
         background-color: #2c2c2c;
         box-shadow: 0 8px 25px rgba(255, 255, 255, 0.15);
     }
-    #customInstallPrompt img {
-        height: 1.2em;
-        vertical-align: middle;
-        filter: invert(1); /* 讓圖示在深色背景下可見 */
-        margin: 0 0.2em;
-        display: inline-block; /* 確保圖片能與文字對齊 */
-    }
-    #customInstallPrompt button {
+    /* === Reusable button styles for all custom modals === */
+    .custom-prompt button {
         border: none;
         padding: 10px 20px;
         border-radius: 5px;
         cursor: pointer;
         font-size: 1em;
         transition: background-color 0.2s, transform 0.1s;
+    }
+
+    /* Specific styles for CustomInstallPrompt (iOS icon, etc.) */
+    #customInstallPrompt img {
+        height: 1.2em;
+        vertical-align: middle;
+        filter: invert(1);
+        margin: 0 0.2em;
+        display: inline-block;
     }
     #customInstallPrompt #customInstallAppButton {
         background-color: #5a4fcf;
@@ -329,7 +340,7 @@
     #customInstallPrompt #customInstallAppButton:hover {
         background-color: #483dbb;
     }
-    #customInstallPrompt #iosDismissButton { /* 為 iOS 的 "不再提示" 單獨設置樣式 */
+    #customInstallPrompt #iosDismissButton {
         background-color: transparent;
         color: #bbb;
         border: 1px solid #bbb;
@@ -338,7 +349,9 @@
         background-color: rgba(255, 255, 255, 0.1);
         color: #fff;
     }
-    #customInstallPrompt #customCancelInstallButton { /* 通用關閉按鈕 */
+    
+    /* General close button for custom prompts (X button in corner) */
+    .custom-prompt .close-button {
         position: absolute;
         top: 8px;
         right: 12px;
@@ -349,10 +362,43 @@
         background-color: transparent;
         color: #bbb;
     }
-    #customInstallPrompt #customCancelInstallButton:hover {
+    .custom-prompt .close-button:hover {
         color: #f0f0f0;
         background-color: transparent;
     }
+
+    /* Specific button styles for notification confirmation modal */
+    #notificationConfirmationModal #confirmEnableNotificationsButton {
+        background-color: #28a745;
+        color: white;
+    }
+    #notificationConfirmationModal #confirmEnableNotificationsButton:hover {
+        background-color: #218838;
+    }
+    #notificationConfirmationModal #cancelEnableNotificationsButton {
+        background-color: #ccc;
+        color: #333;
+    }
+    body.dark-mode #notificationConfirmationModal #cancelEnableNotificationsButton {
+        background-color: #555;
+        color: #fff;
+    }
+    #notificationConfirmationModal #cancelEnableNotificationsButton:hover {
+        background-color: #bbb;
+    }
+    body.dark-mode #notificationConfirmationModal #cancelEnableNotificationsButton:hover {
+        background-color: #666;
+    }
+
+    /* Specific button styles for permission denied modal */
+    #permissionDeniedModal #permissionDeniedCloseButton {
+        background-color: #5a4fcf;
+        color: white;
+    }
+    #permissionDeniedModal #permissionDeniedCloseButton:hover {
+        background-color: #483dbb;
+    }
+
 
     @media (max-width: 700px) {
       body { padding: 1rem; }
@@ -373,42 +419,42 @@
         padding: 0.6em 1em;
         font-size: 0.9em;
       }
-      #customInstallPrompt {
+      .custom-prompt {
           padding: 20px 25px;
           gap: 10px;
       }
-      #customInstallPrompt button {
+      .custom-prompt button {
           padding: 8px 15px;
           font-size: 0.9em;
       }
       /* Ensure toggle switch fits well on small screens */
       .setting-item label {
-        font-size: 1.1em; /* 稍微縮小以適應小螢幕 */
+        font-size: 1.1em;
         margin-right: 10px;
       }
       .toggle-switch {
-        width: 90px; /* 稍微縮小開關寬度 */
-        height: 36px; /* 調整高度 */
+        width: 90px;
+        height: 36px;
       }
       .toggle-switch-label {
-        border-radius: 18px; /* 配合新高度 */
+        border-radius: 18px;
       }
       .toggle-switch-inner:before, 
       .toggle-switch-inner:after {
-        height: 36px; /* 配合新高度 */
-        line-height: 36px; /* 配合新高度 */
-        font-size: 14px; /* 縮小文字 */
-        padding-right: 10px; /* 調整文字位置 */
-        padding-left: 10px; /* 調整文字位置 */
+        height: 36px;
+        line-height: 36px;
+        font-size: 14px;
+        padding-right: 10px;
+        padding-left: 10px;
       }
       .toggle-switch-switch {
-        width: 28px; /* 縮小滑塊 */
-        height: 28px; /* 縮小滑塊 */
-        top: 4px; /* 調整位置 */
-        left: 4px; /* 調整位置 */
+        width: 28px;
+        height: 28px;
+        top: 4px;
+        left: 4px;
       }
       .toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch { 
-        left: calc(100% - 28px - 4px); /* 根據新尺寸調整 */
+        left: calc(100% - 28px - 4px);
       }
     }
   </style>
@@ -456,8 +502,8 @@
         <label for="themeToggleSwitch">系統背景</label>
         <div class="toggle-switch">
           <input type="checkbox" id="themeToggleSwitch" class="toggle-switch-checkbox">
-          <label for="themeToggleSwitch" class="toggle-switch-label">
-            <span class="toggle-switch-inner" data-on="深色" data-off="淺色"></span>
+          <label for="themeToggleSwitch" class="toggle-switch-label" data-on="深色" data-off="淺色">
+            <span class="toggle-switch-inner"></span>
             <span class="toggle-switch-switch"></span>
           </label>
         </div>
@@ -480,12 +526,50 @@
   </div>
 
   <!-- Custom Install Prompt Overlay (此 div 僅為容器，內容由 JS 動態生成) -->
-  <div id="customInstallPromptOverlay"></div>
+  <div id="customInstallPromptOverlay" class="custom-prompt-overlay"></div>
+
+  <!-- Custom Notification Confirmation Modal (新增：用於 default 權限狀態時的確認) -->
+  <div id="notificationConfirmationModalOverlay" class="custom-prompt-overlay">
+    <div id="notificationConfirmationModal" class="custom-prompt">
+        <p style="margin: 0; font-weight: bold;">開啟推播通知</p>
+        <p style="margin: 0; font-size: 0.95em; opacity: 0.9;">
+            您確定要開啟濟公報的每日更新推播通知嗎？
+        </p>
+        <p style="margin: 0; font-size: 0.85em; opacity: 0.7;">（稍後會彈出瀏覽器權限請求）</p>
+        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px;">
+            <button id="confirmEnableNotificationsButton">開啟通知</button>
+            <button id="cancelEnableNotificationsButton">取消</button>
+        </div>
+        <button id="notificationConfirmationCloseXButton" class="close-button">×</button>
+    </div>
+  </div>
+
+  <!-- Custom Permission Denied Guidance Modal (新增：用於權限被拒絕時的指導) -->
+  <div id="permissionDeniedModalOverlay" class="custom-prompt-overlay">
+    <div id="permissionDeniedModal" class="custom-prompt">
+        <p style="margin: 0; font-weight: bold;">通知權限被拒絕</p>
+        <p style="margin: 0; font-size: 0.95em; opacity: 0.9;">
+            您已關閉或拒絕了瀏覽器的通知權限。
+        </p>
+        <p style="margin: 0; font-size: 0.85em; opacity: 0.7;">
+            請前往您**瀏覽器的設定**，手動允許「濟公報」網站發送通知。
+        </p>
+        <p style="margin: 0; font-size: 0.8em; opacity: 0.6;">（例如：Chrome瀏覽器設定 -> 隱私權與安全性 -> 網站設定 -> 通知）</p>
+        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px;">
+            <button id="permissionDeniedCloseButton">我知道了</button>
+        </div>
+        <button id="permissionDeniedCloseXButton" class="close-button">×</button>
+    </div>
+  </div>
+
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="./zh-tw.js"></script>
 
-  <!-- === START: 主邏輯 JavaScript 腳本 === -->
+  <!-- PWA & Settings logic (separate file) -->
+  <script src="pwa-notifications.js" defer></script> 
+
+  <!-- === START: Main Application Logic JavaScript === -->
   <script>
     document.addEventListener('DOMContentLoaded', (event) => {
         let allPosts = [];
@@ -561,7 +645,7 @@
           if (datePickerInstance) datePickerInstance.clear(); filterAndRender();
         });
         
-        // 今日貼文按鈕的功能 (現在在設定面板外面)
+        // "Today's Post" button function (now outside the settings panel)
         document.getElementById("todayBtn").addEventListener("click", () => {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         });
@@ -580,7 +664,8 @@
         function showModalNavButtons() {
             const prevBtn = document.getElementById('modalPrevBtn');
             const nextBtn = document.getElementById('modalNextBtn');
-            if (prevBtn && nextBtn && imageModal.style.display === "flex") {
+            const imageModal = document.getElementById('imageModal'); // Get modal reference here
+            if (prevBtn && nextBtn && imageModal && imageModal.style.display === "flex") {
                 prevBtn.classList.add('visible');
                 nextBtn.classList.add('visible');
                 clearTimeout(modalNavButtonsTimeout);
@@ -682,7 +767,7 @@
                 if (touchEndX === 0 || Math.abs(touchStartX - touchEndX) < swipeThreshold) return;
                 if (touchEndX < touchStartX) navigateModalImage(1); 
                 else if (touchEndX > touchStartX) navigateModalImage(-1);
-                touchStartX = 0; touchEndX = 0; // 重置觸摸狀態
+                touchStartX = 0; touchEndX = 0; // Reset touch state
             });
         }
         const modalImageElement = document.getElementById('modalImage');
@@ -701,11 +786,32 @@
         });
 
         fetchAndRender();
+
+        // === PWA Logic Initialization ===
+        // Get all required DOM elements and pass them to the PWA initialization function.
+        const pwaDomElements = {
+            settingsBtn: document.getElementById('settings-btn'),
+            settingsPanel: document.getElementById('settings-panel'),
+            closeSettingsBtn: document.getElementById('close-settings-btn'),
+            notificationToggleSwitch: document.getElementById('notificationToggle'),
+            notificationLabel: document.querySelector('label[for="notificationToggle"]'),
+            themeToggleSwitch: document.getElementById('themeToggleSwitch'),
+            clearCacheBtn: document.getElementById('clear-cache-btn'),
+            overlay: document.querySelector('.overlay'),
+            customInstallPromptOverlay: document.getElementById('customInstallPromptOverlay'),
+            notificationConfirmationModalOverlay: document.getElementById('notificationConfirmationModalOverlay'),
+            notificationConfirmationModal: document.getElementById('notificationConfirmationModal'),
+            permissionDeniedModalOverlay: document.getElementById('permissionDeniedModalOverlay'),
+            permissionDeniedModal: document.getElementById('permissionDeniedModal'),
+        };
+
+        if (typeof initializePwaLogic === 'function') {
+            initializePwaLogic(pwaDomElements);
+        } else {
+            console.error("Error: initializePwaLogic function not found. Is pwa-notifications.js loaded correctly?");
+        }
     });
   </script>
-
-  <!-- PWA & Settings logic (separate file) -->
-  <script src="pwa-notifications.js"></script>
 
 </body>
 <footer class="footer">
