@@ -4,10 +4,10 @@
 const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
-// 注意：這裡應該是 PWA 的基礎網域，不包含路徑。
+// 注意：這裡應該是 PWA 的基礎網域，不包含任何路徑。
 // 例如，如果你的 PWA 部署在 https://wang-wei-hao.github.io/jigong-news/，
-// 那麼你的 Origin 就是 https://wang-wei-hao.github.io
-const OFFICIAL_PWA_BASE_ORIGIN = 'https://wang-wei-hao.github.io'; // <--- **重要：修正為不含路徑的基礎網域**
+// 那麼你的 OFFICIAL_PWA_BASE_ORIGIN 就是 https://wang-wei-hao.github.io
+const OFFICIAL_PWA_BASE_ORIGIN = 'https://wang-wei-hao.github.io/'; 
 
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
@@ -151,6 +151,21 @@ function showCustomInstallPrompt(type = 'default') {
             </p>
             <p style="margin: 0; font-size: 0.85em; opacity: 0.7;">（若無此選項，請更新您的 iOS 系統或嘗試其他瀏覽器）</p>
         `;
+        buttonsHTML = `
+            <div style="display: flex; gap: 15px; margin-top: 10px;">
+                <button id="iosDismissButton" style="
+                    background-color: transparent;
+                    color: #bbb;
+                    border: 1px solid #bbb;
+                    padding: 8px 15px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    transition: background-color 0.2s, color 0.2s;
+                    min-width: 80px;
+                ">不再提示</button>
+            </div>
+        `;
     } else { // default for Android/Desktop Chrome/Edge
         contentHTML = `
             <p style="margin: 0;">希望每天自動收到濟公報更新嗎？</p>
@@ -193,6 +208,7 @@ function showCustomInstallPrompt(type = 'default') {
 
     const customInstallAppButton = document.getElementById('customInstallAppButton');
     const customCancelInstallButton = document.getElementById('customCancelInstallButton');
+    const iosDismissButton = document.getElementById('iosDismissButton'); // 新增 iOS 專用按鈕
 
     if (customInstallAppButton) {
         customInstallAppButton.addEventListener('click', async () => {
@@ -203,6 +219,13 @@ function showCustomInstallPrompt(type = 'default') {
                 console.log(`User response to the install prompt: ${outcome}`);
                 deferredPrompt = null;
             }
+        });
+    }
+
+    if (iosDismissButton) { // 處理 iOS 的「不再提示」按鈕
+        iosDismissButton.addEventListener('click', () => {
+            localStorage.setItem('hasSeenAppleInstallPrompt', 'dismissed'); // 設定為「已拒絕」
+            hideInstallPrompt();
         });
     }
 
@@ -238,17 +261,21 @@ function hideInstallPrompt() {
 
 // 更新 UI 狀態（按鈕文本和可用性）
 function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironment = false) {
+    // 如果按鈕元素不存在，直接返回
+    if (!subscribeButton) {
+        console.error('未能找到 ID 為 subscribe-btn 的按鈕元素。');
+        return;
+    }
+
     // 如果不是官方來源，直接禁用按鈕並顯示提示
     if (!isOfficialOrigin()) {
-        if (subscribeButton) { // 確保按鈕存在
-            subscribeButton.textContent = '❌ 非官方來源';
-            subscribeButton.disabled = true;
-            subscribeButton.style.backgroundColor = '#6c757d';
-            subscribeButton.title = '通知和安裝功能僅限於官方網站提供。';
-            // 移除所有事件监听器，避免误触
-            subscribeButton.onclick = null;
-            subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
-        }
+        subscribeButton.textContent = '❌ 非官方來源';
+        subscribeButton.disabled = true;
+        subscribeButton.style.backgroundColor = '#6c757d';
+        subscribeButton.title = '通知和安裝功能僅限於官方網站提供。';
+        // 移除所有事件监听器，避免误触
+        subscribeButton.onclick = null;
+        subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
         console.warn('PWA 運行於非官方來源，通知功能已禁用。');
         return; // 直接返回，不執行後續邏輯
     }
@@ -262,7 +289,7 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.onclick = null;
         subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
         subscribeButton.addEventListener('click', () => {
-            const pwaDirectUrl = OFFICIAL_PWA_BASE_ORIGIN + "/jigong-news/?openExternalBrowser=1"; // 使用基礎 Origin
+            const pwaDirectUrl = OFFICIAL_PWA_BASE_ORIGIN + "/jigong-news/"; // 使用基礎 Origin，無需 ?openExternalBrowser=1
             window.open(pwaDirectUrl, '_blank');
         });
         return;
@@ -270,35 +297,39 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
 
     // 針對 iOS/macOS Safari 的特殊處理：只有在 "加入主畫面" 後才能訂閱通知
     // 且必須是在 iOS 16.4+ 或 macOS 16.4+ 才支援 Web Push
-    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled()) {
-        // 判斷是否為支援 Web Push 的 Safari 版本（這裡假設有 PushManager 即表示支援）
-        if (!('PushManager' in window)) {
-            // 如果連 PushManager 都沒有，說明是老舊的 iOS/macOS Safari，完全不支持
-            subscribeButton.textContent = '🍎 Safari 不支援推播';
-            subscribeButton.disabled = true;
-            subscribeButton.style.backgroundColor = '#6c757d';
-            subscribeButton.title = '您的 Safari 版本不支持推播通知功能。請更新系統或使用其他瀏覽器。';
-            subscribeButton.onclick = null;
-            subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
-            return;
+    if ((isAppleMobileDevice() || isMacSafari())) {
+        if (!isPWAInstalled()) { // 如果是 Apple 裝置且 PWA 未安裝
+            if (!('PushManager' in window)) {
+                // 如果連 PushManager 都沒有，說明是老舊的 iOS/macOS Safari，完全不支持
+                subscribeButton.textContent = '🍎 Safari 不支援推播';
+                subscribeButton.disabled = true;
+                subscribeButton.style.backgroundColor = '#6c757d';
+                subscribeButton.title = '您的 Safari 版本不支持推播通知功能。請更新系統或使用其他瀏覽器。';
+                subscribeButton.onclick = null;
+                subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+                return;
+            } else {
+                // 如果支持 PushManager 但未安裝 PWA，則引導用戶安裝
+                subscribeButton.textContent = '🍎 需安裝後開啟通知';
+                subscribeButton.disabled = false; // 允許點擊以引導用戶
+                subscribeButton.style.backgroundColor = '#007bff';
+                subscribeButton.title = '在 iOS/macOS Safari 上，您需要將此網站「加入主畫面」後，才能開啟推播通知功能。';
+                subscribeButton.onclick = null;
+                subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+                subscribeButton.addEventListener('click', () => {
+                    showCustomInstallPrompt('ios'); // 顯示 iOS 安裝提示
+                });
+                return; // 執行此邏輯後立即返回，不再執行後續的一般狀態判斷
+            }
         }
-
-        // 如果支持 PushManager 但未安裝 PWA，則引導用戶安裝
-        subscribeButton.textContent = '🍎 需安裝後開啟通知';
-        subscribeButton.disabled = false; // 允許點擊以引導用戶
-        subscribeButton.style.backgroundColor = '#007bff';
-        subscribeButton.title = '在 iOS/macOS Safari 上，您需要將此網站「加入主畫面」後，才能開啟推播通知功能。';
-        subscribeButton.onclick = null;
-        subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
-        subscribeButton.addEventListener('click', () => {
-            showCustomInstallPrompt('ios'); // 顯示 iOS 安裝提示
-        });
-        return;
+        // 如果是 Apple 裝置且 PWA 已安裝，則繼續執行通用訂閱邏輯
     }
 
 
+    // 移除舊的點擊事件監聽器，避免重複添加
     subscribeButton.onclick = null;
     subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+    // 添加新的點擊事件監聽器
     subscribeButton.addEventListener('click', handleSubscribeButtonClick);
 
     if (permissionState === 'denied') {
@@ -322,7 +353,7 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
 async function checkSubscriptionAndUI() {
     // 優先檢查官方來源
     if (!isOfficialOrigin()) {
-        updateNotificationUI(false, 'default', false); // 禁用按钮并显示非官方提示
+        updateNotificationUI(false, 'default', false); // 禁用按鈕並顯示非官方提示
         return;
     }
 
@@ -333,21 +364,19 @@ async function checkSubscriptionAndUI() {
     }
 
     // 針對 iOS/macOS Safari 的特殊處理：如果未安裝 PWA 且未支援 PushManager，則直接更新 UI
-    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled() && !('PushManager' in window)) {
-        updateNotificationUI(false, 'not-supported'); // 顯示不支持通知的狀態
-        return;
-    }
-    // 如果是支援 Web Push 的 Safari 但未安裝 PWA，則更新 UI 提醒用戶安裝
-    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled() && ('PushManager' in window)) {
-        updateNotificationUI(false, 'default'); // 顯示需安裝後開啟通知
+    // 或如果支援 PushManager 但未安裝 PWA，則更新 UI 提醒用戶安裝
+    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled()) {
+        updateNotificationUI(false, 'default'); // 這裡會引導到 iOS 專屬邏輯
         return;
     }
 
 
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         updateNotificationUI(false, 'not-supported');
-        subscribeButton.textContent = '瀏覽器不支持通知';
-        subscribeButton.title = '您的瀏覽器不支持 Service Worker 或推播通知。';
+        if (subscribeButton) { // 確保按鈕存在
+            subscribeButton.textContent = '瀏覽器不支持通知';
+            subscribeButton.title = '您的瀏覽器不支持 Service Worker 或推播通知。';
+        }
         return;
     }
 
@@ -359,10 +388,12 @@ async function checkSubscriptionAndUI() {
     } catch (error) {
         console.error('檢查訂閱狀態時出錯或Service Worker未準備好:', error);
         updateNotificationUI(false, 'error');
-        subscribeButton.textContent = '通知功能錯誤';
-        subscribeButton.disabled = true;
-        subscribeButton.style.backgroundColor = '#dc3545';
-        subscribeButton.title = '通知功能啟動失敗，請重新載入頁面或檢查瀏覽器設定。';
+        if (subscribeButton) { // 確保按鈕存在
+            subscribeButton.textContent = '通知功能錯誤';
+            subscribeButton.disabled = true;
+            subscribeButton.style.backgroundColor = '#dc3545';
+            subscribeButton.title = '通知功能啟動失敗，請重新載入頁面或檢查瀏覽器設定。';
+        }
     }
 }
 
@@ -382,14 +413,17 @@ async function subscribeUser() {
     if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled()) {
         alert('在 iOS/macOS Safari 上，您需要將此網站「加入主畫面」成為應用程式後，才能訂閱推播通知。');
         showCustomInstallPrompt('ios'); // 引導用戶安裝
-        updateNotificationUI(false, Notification.permission);
+        updateNotificationUI(false, Notification.permission); // 維持「需安裝後開啟通知」狀態
         return;
     }
 
 
-    subscribeButton.disabled = true;
-    subscribeButton.textContent = '正在請求權限...';
-    subscribeButton.style.backgroundColor = '#ffc107';
+    if (subscribeButton) { // 確保按鈕存在才修改其狀態
+        subscribeButton.disabled = true;
+        subscribeButton.textContent = '正在請求權限...';
+        subscribeButton.style.backgroundColor = '#ffc107';
+    }
+
 
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
@@ -399,8 +433,10 @@ async function subscribeUser() {
         return;
     }
 
-    subscribeButton.textContent = '正在訂閱...';
-    subscribeButton.style.backgroundColor = '#ffc107';
+    if (subscribeButton) { // 確保按鈕存在才修改其狀態
+        subscribeButton.textContent = '正在訂閱...';
+        subscribeButton.style.backgroundColor = '#ffc107';
+    }
 
     try {
         const vapidPublicKeyResponse = await fetch(`${BACKEND_BASE_URL}/api/vapid-public-key`);
@@ -443,7 +479,7 @@ async function subscribeUser() {
             const errorText = await response.text();
             console.error('發送訂閱信息到後端失敗:', response.status, errorText);
             alert(`訂閱失敗: ${errorText || '未知錯誤'}`);
-            await subscription.unsubscribe();
+            await subscription.unsubscribe(); // 如果發送到後端失敗，取消本地訂閱
         }
     } catch (error) {
         console.error('訂閱失敗:', error);
@@ -471,9 +507,11 @@ async function unsubscribeUser() {
         return;
     }
 
-    subscribeButton.disabled = true;
-    subscribeButton.textContent = '正在取消訂閱...';
-    subscribeButton.style.backgroundColor = '#ffc107';
+    if (subscribeButton) { // 確保按鈕存在才修改其狀態
+        subscribeButton.disabled = true;
+        subscribeButton.textContent = '正在取消訂閱...';
+        subscribeButton.style.backgroundColor = '#ffc107';
+    }
 
     try {
         const subscription = await swRegistration.pushManager.getSubscription();
@@ -553,10 +591,12 @@ function initializeNotificationFeatures() {
             .catch(function(error) {
                 console.error('Service Worker 註冊失敗:', error);
                 updateNotificationUI(false, 'registration-failed');
-                subscribeButton.textContent = '通知服務無法啟動';
-                subscribeButton.disabled = true;
-                subscribeButton.style.backgroundColor = '#dc3545';
-                subscribeButton.title = 'Service Worker 註冊失敗，推播功能不可用。';
+                if (subscribeButton) { // 確保按鈕存在
+                    subscribeButton.textContent = '通知服務無法啟動';
+                    subscribeButton.disabled = true;
+                    subscribeButton.style.backgroundColor = '#dc3545';
+                    subscribeButton.title = 'Service Worker 註冊失敗，推播功能不可用。';
+                }
             });
     } else {
         // 瀏覽器不支持 Service Worker
@@ -594,12 +634,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // 判斷設備類型以提供不同安裝提示
         if (isAppleMobileDevice() || isMacSafari()) {
             console.log('偵測到 Apple 裝置，準備顯示安裝指南。');
-            // 使用 localStorage 控制顯示頻率，避免過度打擾用戶
+            // 使用 localStorage 控制顯示頻率，允許用戶選擇「不再提示」
             const hasSeenInstallPrompt = localStorage.getItem('hasSeenAppleInstallPrompt');
-            if (!hasSeenInstallPrompt) {
+            if (hasSeenInstallPrompt !== 'dismissed') { // 只有當用戶沒有明確拒絕時才顯示
                 setTimeout(() => {
                     showCustomInstallPrompt('ios');
-                    localStorage.setItem('hasSeenAppleInstallPrompt', 'true'); // 設置標記，下次不再自動彈出
                 }, 3000); // 延遲3秒顯示iOS/macOS安裝提示，讓用戶先看到內容
             }
         } else {
