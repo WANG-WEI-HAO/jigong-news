@@ -268,18 +268,27 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         return;
     }
 
-    subscribeButton.onclick = null;
-    subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
-    subscribeButton.addEventListener('click', handleSubscribeButtonClick);
-
     // 針對 iOS/macOS Safari 的特殊處理：只有在 "加入主畫面" 後才能訂閱通知
+    // 且必須是在 iOS 16.4+ 或 macOS 16.4+ 才支援 Web Push
     if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled()) {
+        // 判斷是否為支援 Web Push 的 Safari 版本（這裡假設有 PushManager 即表示支援）
+        if (!('PushManager' in window)) {
+            // 如果連 PushManager 都沒有，說明是老舊的 iOS/macOS Safari，完全不支持
+            subscribeButton.textContent = '🍎 Safari 不支援推播';
+            subscribeButton.disabled = true;
+            subscribeButton.style.backgroundColor = '#6c757d';
+            subscribeButton.title = '您的 Safari 版本不支持推播通知功能。請更新系統或使用其他瀏覽器。';
+            subscribeButton.onclick = null;
+            subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+            return;
+        }
+
+        // 如果支持 PushManager 但未安裝 PWA，則引導用戶安裝
         subscribeButton.textContent = '🍎 需安裝後開啟通知';
         subscribeButton.disabled = false; // 允許點擊以引導用戶
         subscribeButton.style.backgroundColor = '#007bff';
         subscribeButton.title = '在 iOS/macOS Safari 上，您需要將此網站「加入主畫面」後，才能開啟推播通知功能。';
-        // 更改按鈕行為，引導用戶安裝
-        subscribeButton.onclick = null; // 移除原有行為
+        subscribeButton.onclick = null;
         subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
         subscribeButton.addEventListener('click', () => {
             showCustomInstallPrompt('ios'); // 顯示 iOS 安裝提示
@@ -287,6 +296,10 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         return;
     }
 
+
+    subscribeButton.onclick = null;
+    subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+    subscribeButton.addEventListener('click', handleSubscribeButtonClick);
 
     if (permissionState === 'denied') {
         subscribeButton.textContent = '🚫 通知已拒絕';
@@ -319,11 +332,17 @@ async function checkSubscriptionAndUI() {
         return;
     }
 
-    // 針對 iOS/macOS Safari 的特殊處理：如果未安裝 PWA，則直接更新 UI，不嘗試檢查訂閱
-    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled()) {
-        updateNotificationUI(false, 'default'); // 顯示為未訂閱，因為無法在非 PWA 模式下訂閱
+    // 針對 iOS/macOS Safari 的特殊處理：如果未安裝 PWA 且未支援 PushManager，則直接更新 UI
+    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled() && !('PushManager' in window)) {
+        updateNotificationUI(false, 'not-supported'); // 顯示不支持通知的狀態
         return;
     }
+    // 如果是支援 Web Push 的 Safari 但未安裝 PWA，則更新 UI 提醒用戶安裝
+    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled() && ('PushManager' in window)) {
+        updateNotificationUI(false, 'default'); // 顯示需安裝後開啟通知
+        return;
+    }
+
 
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         updateNotificationUI(false, 'not-supported');
