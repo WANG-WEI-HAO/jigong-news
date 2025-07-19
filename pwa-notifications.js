@@ -94,7 +94,8 @@ function initializePwaLogic(domElements) {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             return true;
         }
-        return window.location.origin === OFFICIAL_PWA_ORIGIN;
+        // 確保 PWA 的完整路徑也匹配，而不是只有 origin
+        return window.location.href.startsWith(OFFICIAL_PWA_ORIGIN + PWA_SUB_PATH);
     }
     
     // 將 Base64 字符串轉換為 Uint8Array
@@ -139,15 +140,14 @@ function initializePwaLogic(domElements) {
             promptDiv.style.backgroundColor = '#333';
             promptDiv.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.5)';
         }
-        // promptDiv.style.transform 由 CSS 的 .custom-prompt-overlay.visible .custom-prompt 控制
 
         let contentHTML = '';
         let buttonsHTML = '';
 
         if (type === 'ios') {
-            const ICON_BASE_PATH = PWA_SUB_PATH === '' ? '/icons' : `${PWA_SUB_PATH}/icons`;
-            const SHARE_ICON_PATH = `${ICON_BASE_PATH}/ios分享icon.jpg`; 
-            const ADD_TO_HOMESCREEN_ICON_PATH = `${ICON_BASE_PATH}/ios加到主畫面icon.jpg`; 
+            const PWA_BASE_URL = window.location.origin + PWA_SUB_PATH;
+            const SHARE_ICON_PATH = `${PWA_BASE_URL}/icons/ios分享icon.jpg`; 
+            const ADD_TO_HOMESCREEN_ICON_PATH = `${PWA_BASE_URL}/icons/ios加到主畫面icon.jpg`; 
 
             contentHTML = `
                 <p style="margin: 0; font-weight: bold;">安裝濟公報應用程式</p>
@@ -460,12 +460,11 @@ function initializePwaLogic(domElements) {
         if (currentPermission === 'denied') {
             console.warn('通知權限已被拒絕，提示用戶手動開啟。');
             showPermissionDeniedGuidanceModal(); // 如果權限已明確被拒絕，則直接顯示指導模態框
-        } else { // currentPermission === 'default' (初始狀態)
+        } else { // currentPermission === 'default'
             console.log('通知權限為預設狀態，彈出自定義確認視窗。');
             showNotificationConfirmationModal(); // 彈出自定義確認模態框
             // 實際的 requestPermissionAndPerformSubscription 將從這個模態框的「開啟通知」按鈕中觸發
         }
-        // 無論哪種情況，都更新 UI 以準備用戶互動
         checkSubscriptionAndUI();
     }
     
@@ -489,7 +488,6 @@ function initializePwaLogic(domElements) {
                 if (!response.ok) console.error(`後端取消訂閱失敗: ${await response.text()}`);
                 await subscription.unsubscribe();
                 alert('您已成功取消訂閱濟公報推播通知！');
-                // 取消週期性同步
                 if ('periodicSync' in swRegistration) {
                     try {
                         await swRegistration.periodicSync.unregister('content-check');
@@ -544,23 +542,18 @@ function initializePwaLogic(domElements) {
         });
     }
     
-    // 統一的 PWA 功能初始化入口函數。
     function initializeFeatures() {
-        // 註冊 Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js')
                 .then(registration => {
                     console.log('Service Worker 註冊成功');
                     swRegistration = registration;
-                    checkSubscriptionAndUI(); // 註冊後立即檢查訂閱狀態並更新 UI
-                    // 在 SW 註冊成功後才綁定開關事件，確保 swRegistration 可用
-                    // 注意：這裡只綁定一次，不會重複
+                    checkSubscriptionAndUI();
                     if (notificationToggleSwitch) {
-                        notificationToggleSwitch.removeEventListener('change', handleNotificationToggleChange); // 防止重複綁定
+                        notificationToggleSwitch.removeEventListener('change', handleNotificationToggleChange);
                         notificationToggleSwitch.addEventListener('change', handleNotificationToggleChange);
                     }
                     
-                    // 監聽通知權限變化
                     if ('permissions' in navigator && 'PushManager' in window) {
                         navigator.permissions.query({ name: 'notifications' }).then(notificationPerm => {
                             notificationPerm.onchange = () => {
@@ -573,16 +566,12 @@ function initializePwaLogic(domElements) {
                 })
                 .catch(error => {
                     console.error('Service Worker 註冊失敗:', error);
-                    // 即使 Service Worker 註冊失敗，也更新 UI 顯示不支持通知
                     if (notificationToggleSwitch) { notificationToggleSwitch.disabled = true; notificationToggleSwitch.checked = false; notificationToggleSwitch.title = '通知服務無法啟動。'; }
                 });
         } else {
-            // 瀏覽器不支持 Service Worker
             if (notificationToggleSwitch) { notificationToggleSwitch.disabled = true; notificationToggleSwitch.checked = false; notificationToggleSwitch.title = '您的瀏覽器不支持 Service Worker 或推播通知。'; }
         }
         
-        // 設定 PWA 安裝提示邏輯
-        // 優先檢查是否已安裝或在受限環境，以及是否為官方來源
         if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) {
             if(isPWAInstalled()){
                 console.log('PWA 已安裝，不顯示安裝提示。');
@@ -592,7 +581,6 @@ function initializePwaLogic(domElements) {
                 console.log('PWA 運行於非官方來源，不顯示安裝提示。');
             }
         } else {
-            // 判斷設備類型以提供不同安裝提示
             if (isAppleMobileDevice() || isMacSafari()) {
                 console.log('偵測到 Apple 裝置，準備顯示安裝指南。');
                 const hasSeenInstallPrompt = localStorage.getItem('hasSeenAppleInstallPrompt');
@@ -648,7 +636,6 @@ function initializePwaLogic(domElements) {
     }
 
     if (settingsBtn) settingsBtn.addEventListener('click', openSettingsPanel);
-    // 修正：closeSettingsBtn 的事件監聽器應該呼叫 closeSettingsPanel 函數
     if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettingsPanel); 
     if (overlay) overlay.addEventListener('click', closeSettingsPanel);
 

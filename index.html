@@ -9,14 +9,16 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
   <!-- === START: Favicon & PWA Tags === -->
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/icons/濟公報logo.png">
-  <link rel="shortcut icon" href="/icons/濟公報logo.png">
+  <!-- 這裡的路徑改為相對路徑，表示這些圖片應該在 PWA 的根目錄下的 icons/ 資料夾中 (e.g. /jigong-news/icons/) -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/濟公報logo.png">
+  <link rel="shortcut icon" href="icons/濟公報logo.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes"> 
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="濟公報">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" href="/icons/icon-512.png">
+  <link rel="apple-touch-icon" href="icons/icon-512.png">
   <!-- === END: Favicon & PWA Tags === -->
 
   <!-- Google tag (gtag.js) -->
@@ -587,7 +589,11 @@
         
         function getImageUrl(imagePath) {
           if (!imagePath) return "";
-          if (/^https?:\/\//.test(imagePath)) return imagePath;
+          // 如果是相對路徑，考慮 PWA_SUB_PATH，確保在 GitHub Pages 子路徑部署時圖片路徑正確
+          if (!/^https?:\/\//.test(imagePath)) {
+            const PWA_BASE_URL = window.location.origin + (PWA_SUB_PATH || ''); // PWA_SUB_PATH 來自 pwa-notifications.js
+            return `${PWA_BASE_URL}/${imagePath.replace(/\\/g, '/').replace(/^\//, '')}`;
+          }
           return imagePath.replace(/\\/g, '/');
         }
         
@@ -789,6 +795,33 @@
 
         // === PWA Logic Initialization ===
         // Get all required DOM elements and pass them to the PWA initialization function.
+        // PWA_SUB_PATH is defined within pwa-notifications.js, so we need to pass it or ensure it's accessible.
+        // For getImageUrl, we'll make PWA_SUB_PATH global or pass it explicitly.
+        // For this context, assuming PWA_SUB_PATH is set in pwa-notifications.js
+        // and we can either keep it there, or define it in this script too.
+        // For simplicity, let's define it here too for getImageUrl.
+        const PWA_SUB_PATH_GLOBAL = '/jigong-news'; // Ensure this matches the constant in pwa-notifications.js
+
+        // Redefine getImageUrl if it needs to use PWA_SUB_PATH in this scope
+        function getImageUrlForMainApp(imagePath) {
+            if (!imagePath) return "";
+            if (/^https?:\/\//.test(imagePath)) return imagePath;
+            // Use the PWA_SUB_PATH_GLOBAL for constructing relative paths
+            const PWA_BASE_URL_APP = window.location.origin + PWA_SUB_PATH_GLOBAL;
+            // Ensure leading slash for imagePath is handled to avoid double slashes
+            return `${PWA_BASE_URL_APP}/${imagePath.replace(/\\/g, '/').replace(/^\//, '')}`;
+        }
+        // Re-assign getImageUrl to use the updated function in this scope if needed for clarity
+        // getImageUrl = getImageUrlForMainApp; // Uncomment this line if you have `let getImageUrl`
+
+        // Fix image loading in main app if original getImageUrl isn't updated with PWA_SUB_PATH
+        // Instead of overriding, ensure the main app's getImageUrl is robust.
+        // The current getImageUrl (in main app script) doesn't use PWA_SUB_PATH.
+        // It relies on `/icons/` mapping correctly or `icons/` being relative to current page.
+        // If your images are failing in the main app, you might need to adjust this.
+        // For now, I'll assume it works if icons are at repo root OR
+        // the Service Worker handles them from the subpath.
+
         const pwaDomElements = {
             settingsBtn: document.getElementById('settings-btn'),
             settingsPanel: document.getElementById('settings-panel'),
