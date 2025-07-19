@@ -1,22 +1,24 @@
 // frontend/public/service-worker.js
 
 // **重要提醒：每次您有靜態檔案 (HTML, CSS, JS) 或 Service Worker 本身的大更新時，請修改此版本號！**
+// 例如，當您修改 index.html, style.css, pwa-notifications.js 等檔案時，將 v2 改為 v3。
 const CACHE_NAME = 'jigong-pwa-cache-v2';
 const urlsToCache = [
   './',
   './index.html',
   './posts.json',
-  './pwa-notifications.js', // 更新为新的合并后的 JS 文件名
+  './pwa-notifications.js', // 更新為新的合併後的 JS 文件名
   'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css',
   'https://cdn.jsdelivr.net/npm/flatpickr',
   './zh-tw.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  // 确保你的分享图标也缓存 (假設這四個ICON資料夾內)
-  './icons/facebook.png',
-  './icons/instagram.png',
-  './icons/line.png',
-  './icons/link.png',
+  // 確保你的分享圖示也快取 (假設這些在 ICON 資料夾內，路徑需確認)
+  // 如果這些圖示位於 'frontend/public/ICON'，請確保路徑正確
+  './ICON/facebook.png',
+  './ICON/instagram.png',
+  './ICON/line.png',
+  './ICON/link.png',
   // 新增 iOS 安裝提示圖示
   './icons/ios加到主畫面icon.jpg',
   './icons/ios分享icon.jpg'
@@ -32,18 +34,18 @@ self.addEventListener('install', event => {
       })
       .then(() => {
         console.log('[Service Worker] Install complete. Skipping waiting...');
-        self.skipWaiting(); // 确保 Service Worker 立即激活
+        self.skipWaiting(); // 確保 Service Worker 立即激活，不再等待當前頁面關閉
       })
       .catch(error => {
         console.error('[Service Worker] Installation failed:', error);
-        throw error; // 抛出错误以防止 Service Worker 注册成功但安装失败
+        throw error; // 拋出錯誤以防止 Service Worker 註冊成功但安裝失敗
       })
   );
 });
 
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating Service Worker ....', event);
-  const cacheWhitelist = [CACHE_NAME];
+  const cacheWhitelist = [CACHE_NAME]; // 僅保留當前版本的快取
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('[Service Worker] Found caches:', cacheNames);
@@ -51,7 +53,7 @@ self.addEventListener('activate', event => {
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
             console.log(`[Service Worker] Deleting old cache: ${cacheName}`);
-            return caches.delete(cacheName);
+            return caches.delete(cacheName); // 刪除所有舊版本的快取
           } else {
             console.log(`[Service Worker] Keeping cache: ${cacheName}`);
           }
@@ -60,19 +62,14 @@ self.addEventListener('activate', event => {
     })
     .then(() => {
       console.log('[Service Worker] Old caches cleaned up. Claiming clients...');
-      return self.clients.claim(); // 确保 Service Worker 控制所有客户端
+      return self.clients.claim(); // 確保 Service Worker 控制所有客戶端，使其立即生效
     })
     .then(() => {
       console.log('[Service Worker] Activation successful and clients claimed.');
     })
     .catch(error => {
       console.error('[Service Worker] Activation failed:', error);
-      // 可以在这里显示一个通知，通知用户 Service Worker 激活失败
-      // self.registration.showNotification('Service Worker Error', {
-      //    body: '無法完全啟用離線功能和推播通知。',
-      //    icon: './icons/icon-192.png'
-      // });
-      throw error; // 抛出错误以在控制台显示堆栈信息
+      throw error; // 拋出錯誤以在控制台顯示堆棧信息
     })
   );
 });
@@ -81,12 +78,12 @@ self.addEventListener('fetch', event => {
   // 對於 posts.json，優先從網路獲取最新數據，並更新快取
   if (event.request.url.includes('posts.json')) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request) // 總是優先嘗試從網路獲取最新數據
         .then(networkResponse => {
           if (networkResponse && networkResponse.ok) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, responseToCache);
+              cache.put(event.request, responseToCache); // 將最新內容快取起來
             });
           }
           return networkResponse;
