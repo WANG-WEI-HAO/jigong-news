@@ -4,7 +4,10 @@
 const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
-const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io/jigong-news'; // <--- 新增：你的 PWA 官方域名
+// 注意：這裡應該是 PWA 的基礎網域，不包含路徑。
+// 例如，如果你的 PWA 部署在 https://wang-wei-hao.github.io/jigong-news/，
+// 那麼你的 Origin 就是 https://wang-wei-hao.github.io
+const OFFICIAL_PWA_BASE_ORIGIN = 'https://wang-wei-hao.github.io'; // <--- **重要：修正為不含路徑的基礎網域**
 
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
@@ -35,16 +38,18 @@ function isAppleMobileDevice() {
 
 // 检测是否为 macOS 上的 Safari 浏览器
 function isMacSafari() {
-    return navigator.userAgent.includes('Macintosh') && navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
+    // macOS Safari 16.4+ 開始支援 Web Push，但仍有其限制。這裡判斷瀏覽器類型。
+    return navigator.userAgent.includes('Macintosh') && navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome') && !navigator.userAgent.includes('Edge');
 }
 
 // === 新增：检测当前页面是否运行在官方域名上 ===
 function isOfficialOrigin() {
     // 在本地開發環境 (localhost) 下，通常也會允許運行，以便調試
-    if (window.location.hostname === 'localhost') {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         return true;
     }
-    return window.location.origin === OFFICIAL_PWA_ORIGIN;
+    // 判斷當前頁面的 Origin 是否以設定的官方基礎 Origin 開頭
+    return window.location.origin.startsWith(OFFICIAL_PWA_BASE_ORIGIN);
 }
 // === 新增结束 ===
 
@@ -64,7 +69,7 @@ function urlBase64ToUint8Array(base64String) {
 
 // --- JS 动态安装提示弹窗逻辑 ---
 function showCustomInstallPrompt(type = 'default') {
-    // 只有在官方域名下才显示安装提示
+    // 只有在官方域名下才顯示安裝提示
     if (!isOfficialOrigin()) {
         console.warn('非官方網域，不顯示安裝提示。');
         return;
@@ -248,7 +253,6 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         return; // 直接返回，不執行後續邏輯
     }
 
-
     if (isSandboxedEnvironment) {
         subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
         subscribeButton.disabled = false;
@@ -258,7 +262,7 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         subscribeButton.onclick = null;
         subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
         subscribeButton.addEventListener('click', () => {
-            const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1";
+            const pwaDirectUrl = OFFICIAL_PWA_BASE_ORIGIN + "/jigong-news/?openExternalBrowser=1"; // 使用基礎 Origin
             window.open(pwaDirectUrl, '_blank');
         });
         return;
@@ -267,6 +271,22 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
     subscribeButton.onclick = null;
     subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
     subscribeButton.addEventListener('click', handleSubscribeButtonClick);
+
+    // 針對 iOS/macOS Safari 的特殊處理：只有在 "加入主畫面" 後才能訂閱通知
+    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled()) {
+        subscribeButton.textContent = '🍎 需安裝後開啟通知';
+        subscribeButton.disabled = false; // 允許點擊以引導用戶
+        subscribeButton.style.backgroundColor = '#007bff';
+        subscribeButton.title = '在 iOS/macOS Safari 上，您需要將此網站「加入主畫面」後，才能開啟推播通知功能。';
+        // 更改按鈕行為，引導用戶安裝
+        subscribeButton.onclick = null; // 移除原有行為
+        subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+        subscribeButton.addEventListener('click', () => {
+            showCustomInstallPrompt('ios'); // 顯示 iOS 安裝提示
+        });
+        return;
+    }
+
 
     if (permissionState === 'denied') {
         subscribeButton.textContent = '🚫 通知已拒絕';
@@ -296,6 +316,12 @@ async function checkSubscriptionAndUI() {
     if (isSandboxed()) {
         updateNotificationUI(false, 'default', true);
         console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
+        return;
+    }
+
+    // 針對 iOS/macOS Safari 的特殊處理：如果未安裝 PWA，則直接更新 UI，不嘗試檢查訂閱
+    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled()) {
+        updateNotificationUI(false, 'default'); // 顯示為未訂閱，因為無法在非 PWA 模式下訂閱
         return;
     }
 
@@ -332,6 +358,15 @@ async function subscribeUser() {
         updateNotificationUI(false, Notification.permission);
         return;
     }
+
+    // 針對 iOS/macOS Safari 的特殊處理：如果未安裝 PWA，則不允許訂閱
+    if ((isAppleMobileDevice() || isMacSafari()) && !isPWAInstalled()) {
+        alert('在 iOS/macOS Safari 上，您需要將此網站「加入主畫面」成為應用程式後，才能訂閱推播通知。');
+        showCustomInstallPrompt('ios'); // 引導用戶安裝
+        updateNotificationUI(false, Notification.permission);
+        return;
+    }
+
 
     subscribeButton.disabled = true;
     subscribeButton.textContent = '正在請求權限...';
