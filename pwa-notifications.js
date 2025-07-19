@@ -4,7 +4,7 @@
 const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
 
 // !!! 請在這裡替換為你的 PWA 實際部署的公開網域 (例如 GitHub Pages 的網域) !!!
-const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io'; // <--- 新增：你的 PWA 官方域名
+const OFFICIAL_PWA_ORIGIN = 'https://wang-wei-hao.github.io/jigong-news'; // <--- 新增：你的 PWA 官方域名
 
 const subscribeButton = document.getElementById('subscribe-btn');
 let swRegistration = null;
@@ -42,7 +42,7 @@ function isMacSafari() {
 function isOfficialOrigin() {
     // 在本地開發環境 (localhost) 下，通常也會允許運行，以便調試
     if (window.location.hostname === 'localhost') {
-        return true; 
+        return true;
     }
     return window.location.origin === OFFICIAL_PWA_ORIGIN;
 }
@@ -63,7 +63,7 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 // --- JS 动态安装提示弹窗逻辑 ---
-function showCustomInstallPrompt(type = 'default') { 
+function showCustomInstallPrompt(type = 'default') {
     // 只有在官方域名下才显示安装提示
     if (!isOfficialOrigin()) {
         console.warn('非官方網域，不顯示安裝提示。');
@@ -81,14 +81,14 @@ function showCustomInstallPrompt(type = 'default') {
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); 
-            z-index: 9999; 
-            display: flex; 
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            display: flex;
             justify-content: center;
             align-items: center;
-            opacity: 0; 
-            transition: opacity 0.3s ease-in-out; 
-            backdrop-filter: blur(5px); 
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            backdrop-filter: blur(5px);
         `;
         document.body.appendChild(promptOverlay);
 
@@ -100,49 +100,50 @@ function showCustomInstallPrompt(type = 'default') {
             padding: 20px 30px;
             border-radius: 12px;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-            z-index: 10000; 
+            z-index: 10000;
             font-size: 1.1em;
             text-align: center;
-            width: clamp(300px, 90vw, 500px); 
+            width: clamp(300px, 90vw, 500px);
             box-sizing: border-box;
-            transform: scale(0.9); 
-            transition: transform 0.3s ease-in-out; 
-            position: relative; 
-            display: flex; 
+            transform: scale(0.9);
+            transition: transform 0.3s ease-in-out;
+            position: relative;
+            display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px; 
+            gap: 15px;
         `;
 
         if (document.body.classList.contains('dark-mode')) {
             promptDiv.style.backgroundColor = '#2c2c2c';
             promptDiv.style.boxShadow = '0 6px 20px rgba(255, 255, 255, 0.1)';
         }
-        
+
         promptOverlay.appendChild(promptDiv);
 
         promptOverlay.addEventListener('click', (e) => {
-            if (e.target === promptOverlay) { 
+            if (e.target === promptOverlay) {
                 hideInstallPrompt();
             }
         });
     }
 
     const promptContentDiv = document.getElementById('customInstallPrompt');
-    if (!promptContentDiv) return; 
+    if (!promptContentDiv) return;
 
     let contentHTML = '';
     let buttonsHTML = '';
 
     if (type === 'ios') {
         contentHTML = `
-            <p style="margin: 0; font-weight: bold;">在您的 Apple 裝置上安裝濟公報應用程式</p>
-            <p style="margin: 0; font-size: 0.95em; opacity: 0.9;">請按照以下步驟，將本網站添加到主畫面：</p>
-            <ol style="text-align: left; padding-left: 25px; margin: 10px 0; font-size: 0.9em; line-height: 1.4; color: #e0e0e0;">
-                <li>1. 點擊瀏覽器底部的 <strong style="font-size:1.1em;">分享按鈕</strong> (<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Share_iOS_14_icon.svg/50px-Share_iOS_14_icon.svg.png" alt="分享圖示" style="height: 1.2em; vertical-align: middle; filter: invert(1);">)</li>
-                <li>2. 選擇「<strong>加入主畫面</strong>」選項</li>
-                <li>3. 確認添加，即可像應用程式一樣使用！</li>
-            </ol>
+            <p style="margin: 0; font-weight: bold;">安裝濟公報應用程式</p>
+            <p style="margin: 0; font-size: 0.95em; opacity: 0.9;">請點擊瀏覽器底部的
+                <strong style="font-size:1.1em;">分享按鈕</strong>
+                (<img src="/icons/ios分享icon.jpg" alt="分享圖示" style="height: 1.2em; vertical-align: middle; filter: invert(1);">)，
+                接著選擇「<strong style="font-size:1.1em;">加入主畫面</strong>」
+                (<img src="/icons/ios加到主畫面icon.jpg" alt="加到主畫面圖示" style="height: 1.2em; vertical-align: middle; filter: invert(1);">)
+                即可安裝應用程式。
+            </p>
             <p style="margin: 0; font-size: 0.85em; opacity: 0.7;">（若無此選項，請更新您的 iOS 系統或嘗試其他瀏覽器）</p>
         `;
     } else { // default for Android/Desktop Chrome/Edge
@@ -173,10 +174,10 @@ function showCustomInstallPrompt(type = 'default') {
         <button id="customCancelInstallButton" style="
             background-color: transparent;
             color: #bbb;
-            font-size: 1.5em; 
+            font-size: 1.5em;
             position: absolute;
-            top: 8px; 
-            right: 12px; 
+            top: 8px;
+            right: 12px;
             padding: 0 5px;
             line-height: 1;
             border: none;
@@ -188,45 +189,45 @@ function showCustomInstallPrompt(type = 'default') {
     const customInstallAppButton = document.getElementById('customInstallAppButton');
     const customCancelInstallButton = document.getElementById('customCancelInstallButton');
 
-    if (customInstallAppButton) { 
+    if (customInstallAppButton) {
         customInstallAppButton.addEventListener('click', async () => {
-            hideInstallPrompt(); 
+            hideInstallPrompt();
             if (deferredPrompt) {
-                deferredPrompt.prompt(); 
-                const { outcome } = await deferredPrompt.userChoice; 
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
                 console.log(`User response to the install prompt: ${outcome}`);
-                deferredPrompt = null; 
+                deferredPrompt = null;
             }
         });
     }
 
     if (customCancelInstallButton) {
         customCancelInstallButton.addEventListener('click', () => {
-            hideInstallPrompt(); 
-            if (type !== 'ios') { 
-                deferredPrompt = null; 
+            hideInstallPrompt();
+            if (type !== 'ios') {
+                deferredPrompt = null;
             }
         });
     }
 
     promptOverlay.style.display = 'flex';
-    setTimeout(() => { 
+    setTimeout(() => {
         promptOverlay.style.opacity = '1';
-        promptContentDiv.style.transform = 'scale(1)'; 
-    }, 50); 
+        promptContentDiv.style.transform = 'scale(1)';
+    }, 50);
 }
 
 function hideInstallPrompt() {
     const promptOverlay = document.getElementById('customInstallPromptOverlay');
     const promptDiv = document.getElementById('customInstallPrompt');
     if (promptOverlay && promptDiv) {
-        promptOverlay.style.opacity = '0'; 
-        promptDiv.style.transform = 'scale(0.9)'; 
-        
+        promptOverlay.style.opacity = '0';
+        promptDiv.style.transform = 'scale(0.9)';
+
         promptOverlay.addEventListener('transitionend', function handler() {
             promptOverlay.style.display = 'none';
-            promptOverlay.removeEventListener('transitionend', handler); 
-        }, { once: true }); 
+            promptOverlay.removeEventListener('transitionend', handler);
+        }, { once: true });
     }
 }
 
@@ -237,11 +238,11 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
         if (subscribeButton) { // 確保按鈕存在
             subscribeButton.textContent = '❌ 非官方來源';
             subscribeButton.disabled = true;
-            subscribeButton.style.backgroundColor = '#6c757d'; 
+            subscribeButton.style.backgroundColor = '#6c757d';
             subscribeButton.title = '通知和安裝功能僅限於官方網站提供。';
             // 移除所有事件监听器，避免误触
-            subscribeButton.onclick = null; 
-            subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+            subscribeButton.onclick = null;
+            subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
         }
         console.warn('PWA 運行於非官方來源，通知功能已禁用。');
         return; // 直接返回，不執行後續邏輯
@@ -251,20 +252,20 @@ function updateNotificationUI(isSubscribed, permissionState, isSandboxedEnvironm
     if (isSandboxedEnvironment) {
         subscribeButton.textContent = '➡️ 進入濟公報開啟通知';
         subscribeButton.disabled = false;
-        subscribeButton.style.backgroundColor = '#6c757d'; 
+        subscribeButton.style.backgroundColor = '#6c757d';
         subscribeButton.title = '您正在受限環境中。請點擊前往完整網站以啟用通知功能。';
-        
-        subscribeButton.onclick = null; 
-        subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
-        subscribeButton.addEventListener('click', () => { 
-            const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1"; 
+
+        subscribeButton.onclick = null;
+        subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
+        subscribeButton.addEventListener('click', () => {
+            const pwaDirectUrl = "https://wang-wei-hao.github.io/jigong-news/?openExternalBrowser=1";
             window.open(pwaDirectUrl, '_blank');
         });
         return;
     }
-    
-    subscribeButton.onclick = null; 
-    subscribeButton.removeEventListener('click', handleSubscribeButtonClick); 
+
+    subscribeButton.onclick = null;
+    subscribeButton.removeEventListener('click', handleSubscribeButtonClick);
     subscribeButton.addEventListener('click', handleSubscribeButtonClick);
 
     if (permissionState === 'denied') {
@@ -291,7 +292,7 @@ async function checkSubscriptionAndUI() {
         updateNotificationUI(false, 'default', false); // 禁用按钮并显示非官方提示
         return;
     }
-    
+
     if (isSandboxed()) {
         updateNotificationUI(false, 'default', true);
         console.warn('PWA 運行於受限沙箱環境中，通知功能可能受限。');
@@ -309,10 +310,10 @@ async function checkSubscriptionAndUI() {
         swRegistration = await navigator.serviceWorker.ready;
         const subscription = await swRegistration.pushManager.getSubscription();
         const permissionState = Notification.permission;
-        updateNotificationUI(!!subscription, permissionState, isSandboxed()); 
+        updateNotificationUI(!!subscription, permissionState, isSandboxed());
     } catch (error) {
         console.error('檢查訂閱狀態時出錯或Service Worker未準備好:', error);
-        updateNotificationUI(false, 'error'); 
+        updateNotificationUI(false, 'error');
         subscribeButton.textContent = '通知功能錯誤';
         subscribeButton.disabled = true;
         subscribeButton.style.backgroundColor = '#dc3545';
@@ -374,10 +375,10 @@ async function subscribeUser() {
             console.log('訂閱成功並發送到後端。');
             alert('您已成功訂閱每日濟公報推播通知！');
             updateNotificationUI(true, Notification.permission);
-            if ('periodicSync' in swRegistration) { 
+            if ('periodicSync' in swRegistration) {
                 try {
                     await swRegistration.periodicSync.register('content-check', {
-                        minInterval: 24 * 60 * 60 * 1000 
+                        minInterval: 24 * 60 * 60 * 1000
                     });
                     console.log('Periodic background sync registered successfully.');
                 } catch (e) {
@@ -388,7 +389,7 @@ async function subscribeUser() {
             const errorText = await response.text();
             console.error('發送訂閱信息到後端失敗:', response.status, errorText);
             alert(`訂閱失敗: ${errorText || '未知錯誤'}`);
-            await subscription.unsubscribe(); 
+            await subscription.unsubscribe();
         }
     } catch (error) {
         console.error('訂閱失敗:', error);
@@ -530,9 +531,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // PWA 安裝提示邏輯
     // 優先檢查是否已安裝或在受限環境，以及是否為官方來源
-    if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) { 
+    if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) {
         if(isPWAInstalled()){
-             console.log('PWA 已安裝，不顯示安裝提示。');
+            console.log('PWA 已安裝，不顯示安裝提示。');
         }
         // 如果是沙箱環境或非官方來源，安裝提示不會被顯示
     } else {
