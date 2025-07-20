@@ -33,7 +33,7 @@ function initializePwaLogic(domElements) {
     // !!! 本地開發時，請將此處設為 '' (空字串) !!!
     // !!! 部署到 GitHub Pages 等子路徑時，請設為 '/your-repo-name'，例如 '/jigong-news' !!!
     // --- 根據您的指示，這裡修改為 /frontend/public，但通常部署到 Github Pages 會是 /your-repo-name ---
-    const PWA_SUB_PATH = '/jigong-news'; // <--- 已修改為本地開發的正確路徑！
+    const PWA_SUB_PATH = '/jigong-news/'; // <--- 已修改為本地開發的正確路徑！
 
     // --- 狀態變數 ---
     let swRegistration = null; // 用於保存 Service Worker 註冊的實例
