@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
   <!-- === START: Favicon & PWA Tags === -->
-  <!-- 這裡的路徑改為相對路徑，表示這些圖片應該在 PWA 的根目錄下的 icons/ 資料夾中 (e.g. /jigong-news/icons/) -->
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/濟公報logo.png">
   <link rel="shortcut icon" href="icons/濟公報logo.png">
@@ -143,10 +142,10 @@
     .setting-item:last-child { border-bottom: none; }
     body.dark-mode .setting-item { border-bottom-color: #495057; }
     .setting-item label { 
-      font-size: 1.2em; /* 字體更醒目 */
+      font-size: 1.2em;
       font-weight: bold;
-      white-space: nowrap; /* 防止文字換行 */
-      margin-right: 15px; /* 與開關保持距離 */
+      white-space: nowrap; 
+      margin-right: 15px; 
     }
     .action-button {
       padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 0.9em;
@@ -157,7 +156,7 @@
     .action-button:hover { background-color: #218838; }
     #clear-cache-btn { background-color: #ffc107; color: #212529; }
     #clear-cache-btn:hover { background-color: #e0a800; }
-    .close-button { /* General close button for settings panel and custom prompts */
+    .close-button {
       background: none; border: none; font-size: 2em; color: #6c757d;
       cursor: pointer; line-height: 1; padding: 0 5px; transition: color 0.2s;
     }
@@ -170,14 +169,14 @@
     }
     .overlay.is-visible { opacity: 1; pointer-events: auto; }
     
-    /* Toggle Switch Styles - 調整寬度使文字可見 */
+    /* === 調整後的 Toggle Switch Styles === */
     .toggle-switch {
       position: relative; 
-      width: 120px; /* 加寬 */
-      height: 40px; 
+      width: 120px; /* 寬度 */
+      height: 40px; /* 高度 */
       display: inline-block; 
       vertical-align: middle;
-      flex-shrink: 0; /* 防止在 flex 容器中縮小 */
+      flex-shrink: 0; 
     }
     .toggle-switch-checkbox { display: none; }
     .toggle-switch-label {
@@ -190,7 +189,6 @@
     }
     body.dark-mode .toggle-switch-label { background-color: #555; }
     .toggle-switch-checkbox:checked + .toggle-switch-label { background-color: #28a745; }
-    /* Dark mode toggle ON color */
     #themeToggleSwitch:checked + .toggle-switch-label { background-color: #bb86fc; } 
     body.dark-mode #themeToggleSwitch:checked + .toggle-switch-label { background-color: #bb86fc; }
 
@@ -206,45 +204,50 @@
       float: left; 
       width: 50%; /* 各佔 inner 總寬度的一半 */
       height: 40px; 
-      padding: 0; 
+      padding: 0; /* 移除這裡的 padding，改由 padding-left/right 控制 */
       line-height: 40px; 
-      font-size: 16px; /* 增大字體 */
+      font-size: 16px; 
       color: white; 
       font-weight: bold; 
       box-sizing: border-box; 
-      text-align: center;
     }
     .toggle-switch-inner:before { 
       content: "開"; 
       background-color: #28a745; 
-      padding-right: 20px; /* 推文字到左邊 */
+      padding-right: 15px; /* 推文字到左邊，讓開關有空間 */
+      text-align: left; /* 文字靠左對齊 */
     }
     .toggle-switch-inner:after { 
       content: "關"; 
       background-color: #ccc; 
-      padding-left: 20px; /* 推文字到右邊 */
+      padding-left: 15px; /* 推文字到右邊，讓開關有空間 */
+      text-align: right; /* 文字靠右對齊 */
     }
     /* Theme toggle specific text */
     #themeToggleSwitch + .toggle-switch-label .toggle-switch-inner:before {
       content: attr(data-on); 
       background-color: #bb86fc; /* 深色主題開啟顏色 */
-      color: white; /* 確保文字顏色 */
+      color: white; 
+      padding-right: 15px; /* 與上面保持一致 */
+      text-align: left;
     }
     #themeToggleSwitch + .toggle-switch-label .toggle-switch-inner:after {
       content: attr(data-off); 
       background-color: #ccc; /* 淺色模式關閉顏色 */
-      color: #333; /* 淺色模式下文字顏色 */
+      color: #333; 
+      padding-left: 15px; /* 與上面保持一致 */
+      text-align: right;
     }
     body.dark-mode #themeToggleSwitch + .toggle-switch-label .toggle-switch-inner:after { 
         background-color: #555; /* 深色模式下「關」狀態背景 */
-        color: #fff; /* 深色模式下「關」狀態文字 */
+        color: #fff; 
     }
 
     .toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-inner { margin-left: 0; }
     .toggle-switch-switch {
       display: block; 
-      width: 32px; 
-      height: 32px; 
+      width: 32px; /* 滑塊寬度 */
+      height: 32px; /* 滑塊高度 */
       background: #fff;
       position: absolute; 
       top: 4px; /* 與上下邊緣保持 4px */
@@ -276,18 +279,18 @@
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
         z-index: 10000;
-        display: flex; /* 預設為 flex 以便內容居中 */
+        display: flex; 
         justify-content: center;
         align-items: center;
-        opacity: 0; /* 預設隱藏，通過 opacity 過渡 */
-        visibility: hidden; /* 用於隱藏元素，不佔空間，且可被 transition 影響 */
-        transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; /* 半透明層的過渡 */
-        pointer-events: none; /* 預設不響應事件，只有 visible 時才響應 */
+        opacity: 0; 
+        visibility: hidden; 
+        transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; 
+        pointer-events: none; 
     }
     .custom-prompt-overlay.visible {
         opacity: 1;
-        visibility: visible; /* 顯示時可見 */
-        pointer-events: auto; /* 顯示時響應事件 */
+        visibility: visible; 
+        pointer-events: auto; 
     }
     /* === Reusable style for the content box of the prompt === */
     .custom-prompt {
@@ -300,15 +303,14 @@
         text-align: center;
         width: clamp(300px, 90vw, 500px);
         box-sizing: border-box;
-        transform: scale(0.9); /* 內容區的初始縮小狀態 */
-        transition: transform 0.3s ease-in-out; /* 內容區的縮放過渡 */
+        transform: scale(0.9); 
+        transition: transform 0.3s ease-in-out; 
         position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 15px;
     }
-    /* 當父層 .custom-prompt-overlay 有 .visible class 時，內容區放大 */
     .custom-prompt-overlay.visible .custom-prompt {
         transform: scale(1);
     }
@@ -414,7 +416,6 @@
       #shareButtonsContainer button, #shareButtonsContainer a { padding: 4px 8px; }
       .settings-button { top: 0.8rem; right: 0.8rem; font-size: 1.5em; }
       .settings-panel { width: 250px; right: -250px; }
-      /* Adjust todayBtn position for smaller screens if needed */
       #todayBtn {
         bottom: 0.8rem;
         right: 0.8rem;
@@ -429,13 +430,13 @@
           padding: 8px 15px;
           font-size: 0.9em;
       }
-      /* Ensure toggle switch fits well on small screens */
+      /* Responsive adjustments for toggle switch */
       .setting-item label {
         font-size: 1.1em;
         margin-right: 10px;
       }
       .toggle-switch {
-        width: 90px;
+        width: 100px; /* Small screen width */
         height: 36px;
       }
       .toggle-switch-label {
@@ -446,8 +447,8 @@
         height: 36px;
         line-height: 36px;
         font-size: 14px;
-        padding-right: 10px;
-        padding-left: 10px;
+        padding-right: 10px; /* Adjust padding for smaller screen */
+        padding-left: 10px; /* Adjust padding for smaller screen */
       }
       .toggle-switch-switch {
         width: 28px;
@@ -573,6 +574,9 @@
 
   <!-- === START: Main Application Logic JavaScript === -->
   <script>
+    // 定義 PWA_SUB_PATH，確保在 index.html 腳本中使用時也可用
+    const PWA_SUB_PATH = '/jigong-news'; 
+
     document.addEventListener('DOMContentLoaded', (event) => {
         let allPosts = [];
         let filteredPosts = [];
@@ -589,9 +593,9 @@
         
         function getImageUrl(imagePath) {
           if (!imagePath) return "";
-          // 如果是相對路徑，考慮 PWA_SUB_PATH，確保在 GitHub Pages 子路徑部署時圖片路徑正確
+          // 如果是相對路徑，使用在 index.html 腳本中定義的 PWA_SUB_PATH
           if (!/^https?:\/\//.test(imagePath)) {
-            const PWA_BASE_URL = window.location.origin + (PWA_SUB_PATH || ''); // PWA_SUB_PATH 來自 pwa-notifications.js
+            const PWA_BASE_URL = window.location.origin + PWA_SUB_PATH; 
             return `${PWA_BASE_URL}/${imagePath.replace(/\\/g, '/').replace(/^\//, '')}`;
           }
           return imagePath.replace(/\\/g, '/');
@@ -794,34 +798,6 @@
         fetchAndRender();
 
         // === PWA Logic Initialization ===
-        // Get all required DOM elements and pass them to the PWA initialization function.
-        // PWA_SUB_PATH is defined within pwa-notifications.js, so we need to pass it or ensure it's accessible.
-        // For getImageUrl, we'll make PWA_SUB_PATH global or pass it explicitly.
-        // For this context, assuming PWA_SUB_PATH is set in pwa-notifications.js
-        // and we can either keep it there, or define it in this script too.
-        // For simplicity, let's define it here too for getImageUrl.
-        const PWA_SUB_PATH_GLOBAL = '/jigong-news'; // Ensure this matches the constant in pwa-notifications.js
-
-        // Redefine getImageUrl if it needs to use PWA_SUB_PATH in this scope
-        function getImageUrlForMainApp(imagePath) {
-            if (!imagePath) return "";
-            if (/^https?:\/\//.test(imagePath)) return imagePath;
-            // Use the PWA_SUB_PATH_GLOBAL for constructing relative paths
-            const PWA_BASE_URL_APP = window.location.origin + PWA_SUB_PATH_GLOBAL;
-            // Ensure leading slash for imagePath is handled to avoid double slashes
-            return `${PWA_BASE_URL_APP}/${imagePath.replace(/\\/g, '/').replace(/^\//, '')}`;
-        }
-        // Re-assign getImageUrl to use the updated function in this scope if needed for clarity
-        // getImageUrl = getImageUrlForMainApp; // Uncomment this line if you have `let getImageUrl`
-
-        // Fix image loading in main app if original getImageUrl isn't updated with PWA_SUB_PATH
-        // Instead of overriding, ensure the main app's getImageUrl is robust.
-        // The current getImageUrl (in main app script) doesn't use PWA_SUB_PATH.
-        // It relies on `/icons/` mapping correctly or `icons/` being relative to current page.
-        // If your images are failing in the main app, you might need to adjust this.
-        // For now, I'll assume it works if icons are at repo root OR
-        // the Service Worker handles them from the subpath.
-
         const pwaDomElements = {
             settingsBtn: document.getElementById('settings-btn'),
             settingsPanel: document.getElementById('settings-panel'),
