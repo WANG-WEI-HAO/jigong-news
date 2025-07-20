@@ -30,6 +30,12 @@
   </script>
 
   <style>
+    /* 
+      CSS 部分保持不變，因為您的 CSS 已經寫得相當好，
+      包含了深色模式、響應式設計和模態視窗的樣式。
+      `.custom-prompt-overlay` 和 `.custom-prompt` 樣式足以支援新增的通用模態框。
+      若有額外需要調整的細節，請再提出。
+    */
     body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; transition: background-color 0.3s, color 0.3s; -webkit-tap-highlight-color: transparent; }
     h1 { color: #5a4fcf; display: flex; align-items: baseline; flex-wrap: wrap; }
     h1 .subtitle {
@@ -243,7 +249,7 @@
         color: #fff; 
     }
 
-    .toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-inner { margin-left: 0; }
+    .toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch { margin-left: 0; }
     .toggle-switch-switch {
       display: block; 
       width: 32px; /* 滑塊寬度 */
@@ -403,6 +409,31 @@
         background-color: #483dbb;
     }
 
+    /* 新增的通用確認和提示模態框按鈕樣式 */
+    #customConfirmModal #customConfirmOkButton,
+    #customAlertModal #customAlertOkButton {
+        background-color: #5a4fcf; /* 主要行動按鈕顏色 */
+        color: white;
+    }
+    #customConfirmModal #customConfirmOkButton:hover,
+    #customAlertModal #customAlertOkButton:hover {
+        background-color: #483dbb;
+    }
+    #customConfirmModal #customConfirmCancelButton {
+        background-color: #ccc; /* 取消按鈕顏色 */
+        color: #333;
+    }
+    body.dark-mode #customConfirmModal #customConfirmCancelButton {
+        background-color: #555;
+        color: #fff;
+    }
+    #customConfirmModal #customConfirmCancelButton:hover {
+        background-color: #bbb;
+    }
+    body.dark-mode #customConfirmModal #customConfirmCancelButton:hover {
+        background-color: #666;
+    }
+
 
     @media (max-width: 700px) {
       body { padding: 1rem; }
@@ -468,7 +499,6 @@
     <h1>濟公報<span class="subtitle">（每日7:00更新）</span></h1>
   </header>
   
-  <!-- "今日貼文" 按鈕 - 移到設定面板外面 -->
   <button id="todayBtn" title="今日貼文">今日貼文</button>
   <button id="settings-btn" class="settings-button" title="設定">⚙️</button>
 
@@ -531,7 +561,7 @@
   <!-- Custom Install Prompt Overlay (此 div 僅為容器，內容由 JS 動態生成) -->
   <div id="customInstallPromptOverlay" class="custom-prompt-overlay"></div>
 
-  <!-- Custom Notification Confirmation Modal (新增：用於 default 權限狀態時的確認) -->
+  <!-- Custom Notification Confirmation Modal (用於 default 權限狀態時的確認) -->
   <div id="notificationConfirmationModalOverlay" class="custom-prompt-overlay">
     <div id="notificationConfirmationModal" class="custom-prompt">
         <p style="margin: 0; font-weight: bold;">開啟推播通知</p>
@@ -547,7 +577,7 @@
     </div>
   </div>
 
-  <!-- Custom Permission Denied Guidance Modal (新增：用於權限被拒絕時的指導) -->
+  <!-- Custom Permission Denied Guidance Modal (用於權限被拒絕時的指導) -->
   <div id="permissionDeniedModalOverlay" class="custom-prompt-overlay">
     <div id="permissionDeniedModal" class="custom-prompt">
         <p style="margin: 0; font-weight: bold;">通知權限被拒絕</p>
@@ -565,8 +595,29 @@
     </div>
   </div>
 
+  <!-- === 新增：通用確認模態框 (用於取代 confirm()) === -->
+  <div id="customConfirmModalOverlay" class="custom-prompt-overlay">
+      <div id="customConfirmModal" class="custom-prompt">
+          <p id="customConfirmMessage" style="margin: 0; font-weight: bold;">您確定嗎？</p>
+          <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px;">
+              <button id="customConfirmOkButton">確定</button>
+              <button id="customConfirmCancelButton">取消</button>
+          </div>
+      </div>
+  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <!-- === 新增：通用提示模態框 (用於取代 alert()) === -->
+  <div id="customAlertModalOverlay" class="custom-prompt-overlay">
+      <div id="customAlertModal" class="custom-prompt">
+          <p id="customAlertMessage" style="margin: 0;">操作完成！</p>
+          <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px;">
+              <button id="customAlertOkButton">我知道了</button>
+          </div>
+      </div>
+  </div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
   <script src="./zh-tw.js"></script>
 
   <!-- PWA & Settings logic (separate file) -->
@@ -575,9 +626,28 @@
   <!-- === START: Main Application Logic JavaScript === -->
   <script>
     // 定義 PWA_SUB_PATH，確保在 index.html 腳本中使用時也可用
-    const PWA_SUB_PATH = '/jigong-news'; 
+    // !!! 重要：本地開發時，請將此處設為 '/frontend/public' (與 Live Server 的根路徑匹配) !!!
+    // !!! 部署到 GitHub Pages 等子路徑時，請設為 '/your-repo-name'，例如 '/jigong-news' !!!
+    // 例如，如果您的網站是 https://username.github.io/jigong-news/，則設定為 '/jigong-news'
+    // 如果您的網站是 https://www.yourdomain.com/，則設定為 ''
+    const PWA_SUB_PATH = '/jigong-news'; // <--- 已根據您的新要求設定為本地開發路徑！
 
     document.addEventListener('DOMContentLoaded', (event) => {
+        // === DOM 元素緩存 ===
+        // 將常用到的 DOM 元素先查詢並儲存起來，避免重複查詢，提高效能和可讀性。
+        const contentContainer = document.getElementById("content");
+        const searchInput = document.getElementById("search");
+        const datePickerInput = document.getElementById("datePicker");
+        const loadMoreBtn = document.getElementById("loadMoreBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        const todayBtn = document.getElementById("todayBtn");
+        const imageModal = document.getElementById("imageModal");
+        const modalImage = document.getElementById("modalImage");
+        const modalCloseBtn = document.getElementById("modalCloseBtn");
+        const modalPrevBtn = document.getElementById("modalPrevBtn");
+        const modalNextBtn = document.getElementById("modalNextBtn");
+        const shareButtonsContainer = document.getElementById("shareButtonsContainer");
+
         let allPosts = [];
         let filteredPosts = [];
         let datePickerInstance = null;
@@ -591,213 +661,420 @@
         let touchEndX = 0;
         const swipeThreshold = 50;
         
+        /**
+         * 根據圖片路徑判斷是否為相對路徑，並添加 PWA 子路徑。
+         * @param {string} imagePath - 原始圖片路徑。
+         * @returns {string} 處理後的完整圖片 URL。
+         */
         function getImageUrl(imagePath) {
           if (!imagePath) return "";
-          // 如果是相對路徑，使用在 index.html 腳本中定義的 PWA_SUB_PATH
-          if (!/^https?:\/\//.test(imagePath)) {
+          // 檢查是否為絕對路徑 (http/https 開頭)
+          if (!/^https?:\/\//i.test(imagePath)) {
+            // 如果是相對路徑，則根據 PWA_SUB_PATH 組成完整 URL
+            // 確保路徑處理正確，移除開頭斜線並替換反斜線
             const PWA_BASE_URL = window.location.origin + PWA_SUB_PATH; 
             return `${PWA_BASE_URL}/${imagePath.replace(/\\/g, '/').replace(/^\//, '')}`;
           }
+          // 如果是絕對路徑，直接返回並將反斜線替換為正斜線
           return imagePath.replace(/\\/g, '/');
         }
         
+        /**
+         * 渲染批次文章到 DOM 中。
+         */
         function renderBatch() {
-          const container = document.getElementById("content");
           const postsToRender = filteredPosts.slice(renderIndex, renderIndex + batchSize);
           postsToRender.forEach(post => {
-            const div = document.createElement("div"); div.className = "post";
+            const div = document.createElement("div"); 
+            div.className = "post";
             const imgTag = post.image ? `<img src="${getImageUrl(post.image)}" alt="圖片" onerror="this.style.display='none';">` : "";
             const displayTextForRender = (post.text || "").replace(/\n/g, "<br>");
             
             div.innerHTML = `<div class="date">${post.date || ""}</div><div class="text"></div>${imgTag}`;
+            // 優化: 直接操作 textElement.innerHTML
             const textElement = div.querySelector('.text');
-
-            if (textElement) { textElement.innerHTML = displayTextForRender; }
-            container.appendChild(div);
+            if (textElement) { 
+              textElement.innerHTML = displayTextForRender; 
+            }
+            contentContainer.appendChild(div);
           });
           renderIndex += postsToRender.length;
-          document.getElementById("loadMoreBtn").style.display = renderIndex >= filteredPosts.length ? "none" : "block";
+          loadMoreBtn.style.display = renderIndex >= filteredPosts.length ? "none" : "block";
         }
 
-        function render(posts) { document.getElementById("content").innerHTML = ""; renderIndex = 0; renderBatch(); }
-        function getAllDates(posts) { return [...new Set(posts.map(post => post.date).filter(Boolean))].sort((a, b) => (b || "").localeCompare(a || "")); }
+        /**
+         * 重新渲染所有文章，清空現有內容並從頭開始渲染批次。
+         * @param {Array<Object>} posts - 要渲染的文章數組。
+         */
+        function render(posts) { 
+          contentContainer.innerHTML = ""; 
+          renderIndex = 0; 
+          renderBatch(); 
+        }
 
+        /**
+         * 從所有文章中獲取所有不重複的日期並排序。
+         * @param {Array<Object>} posts - 所有文章數組。
+         * @returns {Array<string>} 排序後的日期數組。
+         */
+        function getAllDates(posts) { 
+          return [...new Set(posts.map(post => post.date).filter(Boolean))]
+                 .sort((a, b) => (b || "").localeCompare(a || "")); 
+        }
+
+        /**
+         * 從 posts.json 檔案獲取資料並渲染。
+         */
         function fetchAndRender() {
           fetch("posts.json")
-            .then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.json(); })
+            .then(res => { 
+              if (!res.ok) {
+                // 嘗試更友善的錯誤訊息，特別是對於 404 (Not Found)
+                if (res.status === 404) {
+                    throw new Error("無法找到文章資料 (posts.json)。請確認檔案路徑是否正確。");
+                }
+                throw new Error(`HTTP 錯誤！狀態碼：${res.status}`); 
+              }
+              return res.json(); 
+            })
             .then(data => {
               allPosts = data;
-              filteredPosts = allPosts; render(filteredPosts);
-              if (datePickerInstance) datePickerInstance.destroy();
-              datePickerInstance = flatpickr("#datePicker", {
-                dateFormat: "Y-m-d", disableMobile: true, locale: "zh_tw",
-                onChange: function() { filterAndRender(); }, enable: getAllDates(allPosts)
+              filteredPosts = allPosts; 
+              render(filteredPosts); // 初次渲染
+              
+              // 銷毀現有 Flatpickr 實例並重新初始化
+              if (datePickerInstance) {
+                datePickerInstance.destroy();
+              }
+              datePickerInstance = flatpickr(datePickerInput, { // 使用緩存的 DOM 元素
+                dateFormat: "Y-m-d", 
+                disableMobile: true, 
+                locale: "zh_tw",
+                onChange: function() { 
+                  filterAndRender(); 
+                }, 
+                enable: getAllDates(allPosts) // 僅啟用有文章的日期
               });
             })
-            .catch(error => { console.error("Error fetching or processing posts:", error); document.getElementById("content").innerHTML = "<p>無法載入文章，請稍後再試。</p>"; });
+            .catch(error => { 
+              console.error("載入或處理文章時發生錯誤:", error); 
+              contentContainer.innerHTML = `<p>無法載入文章，請稍後再試。<br>錯誤訊息: ${error.message}</p>`; 
+            });
         }
 
+        /**
+         * 根據搜尋關鍵字和日期篩選文章並重新渲染。
+         */
         function filterAndRender() {
-          const keywordInput = document.getElementById("search").value.trim().toLowerCase();
-          const keywords = keywordInput.split(/\s+/).filter(Boolean); const date = document.getElementById("datePicker").value.trim();
+          const keywordInput = searchInput.value.trim().toLowerCase(); // 使用緩存的 DOM 元素
+          const keywords = keywordInput.split(/\s+/).filter(Boolean); 
+          const date = datePickerInput.value.trim(); // 使用緩存的 DOM 元素
+
           filteredPosts = allPosts.filter(post => {
-            const postText = (post.text || "").toLowerCase(); const postDate = (post.date || "");
+            const postText = (post.text || "").toLowerCase(); 
+            const postDate = (post.date || "");
             const matchText = keywords.length === 0 || keywords.every(kw => postText.includes(kw));
-            const matchDate = !date || postDate === date; return matchText && matchDate;
+            const matchDate = !date || postDate === date; 
+            return matchText && matchDate;
           });
           render(filteredPosts);
         }
 
-        document.getElementById("search").addEventListener("input", filterAndRender);
-        document.getElementById("loadMoreBtn").addEventListener("click", renderBatch);
-        document.getElementById("resetBtn").addEventListener("click", function() {
-          document.getElementById("search").value = ""; document.getElementById("datePicker").value = "";
-          if (datePickerInstance) datePickerInstance.clear(); filterAndRender();
+        // === 事件監聽器 ===
+        searchInput.addEventListener("input", filterAndRender); // 使用緩存的 DOM 元素
+        loadMoreBtn.addEventListener("click", renderBatch); // 使用緩存的 DOM 元素
+        resetBtn.addEventListener("click", function() { // 使用緩存的 DOM 元素
+          searchInput.value = ""; 
+          datePickerInput.value = "";
+          if (datePickerInstance) {
+            datePickerInstance.clear(); 
+          }
+          filterAndRender();
         });
         
-        // "Today's Post" button function (now outside the settings panel)
-        document.getElementById("todayBtn").addEventListener("click", () => {
+        // "今日貼文" 按鈕 - 點擊後滾動到頂部
+        todayBtn.addEventListener("click", () => { // 使用緩存的 DOM 元素
           window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
-        let imageList = []; let currentImageIndex = -1;
-        function updateImageList() { imageList = Array.from(document.querySelectorAll(".post img")).map(img => img.src); }
+        let imageList = []; 
+        let currentImageIndex = -1;
 
+        /** 更新圖片列表 (當篩選或載入更多時，圖片可能會變動) */
+        function updateImageList() { 
+          imageList = Array.from(contentContainer.querySelectorAll(".post img")).map(img => img.src); 
+        }
+
+        /** 顯示分享按鈕容器 */
         function showShareButtons() {
-            const container = document.getElementById('shareButtonsContainer');
-            if (container) { container.classList.add('visible'); clearTimeout(shareButtonsTimeout);
+            if (shareButtonsContainer) { // 使用緩存的 DOM 元素
+                shareButtonsContainer.classList.add('visible'); 
+                clearTimeout(shareButtonsTimeout);
                 shareButtonsTimeout = setTimeout(hideShareButtons, shareButtonHideDelay);
             }
         }
-        function hideShareButtons() { const container = document.getElementById('shareButtonsContainer'); if (container) container.classList.remove('visible'); }
 
+        /** 隱藏分享按鈕容器 */
+        function hideShareButtons() { 
+            if (shareButtonsContainer) { // 使用緩存的 DOM 元素
+              shareButtonsContainer.classList.remove('visible'); 
+            }
+        }
+
+        /** 顯示模態視窗導航按鈕 (上一張/下一張) */
         function showModalNavButtons() {
-            const prevBtn = document.getElementById('modalPrevBtn');
-            const nextBtn = document.getElementById('modalNextBtn');
-            const imageModal = document.getElementById('imageModal'); // Get modal reference here
-            if (prevBtn && nextBtn && imageModal && imageModal.style.display === "flex") {
-                prevBtn.classList.add('visible');
-                nextBtn.classList.add('visible');
+            // 使用緩存的 DOM 元素
+            if (modalPrevBtn && modalNextBtn && imageModal.style.display === "flex") { 
+                modalPrevBtn.classList.add('visible');
+                modalNextBtn.classList.add('visible');
                 clearTimeout(modalNavButtonsTimeout);
                 modalNavButtonsTimeout = setTimeout(hideModalNavButtons, modalNavButtonHideDelay);
             }
         }
 
+        /** 隱藏模態視窗導航按鈕 */
         function hideModalNavButtons() {
-            const prevBtn = document.getElementById('modalPrevBtn');
-            const nextBtn = document.getElementById('modalNextBtn');
-            if (prevBtn && nextBtn) {
-                prevBtn.classList.remove('visible');
-                nextBtn.classList.remove('visible');
+            // 使用緩存的 DOM 元素
+            if (modalPrevBtn && modalNextBtn) { 
+                modalPrevBtn.classList.remove('visible');
+                modalNextBtn.classList.remove('visible');
             }
         }
         
+        /**
+         * 生成並顯示分享按鈕。
+         * @param {string} imageUrl - 要分享的圖片 URL。
+         * @param {string} [postText=""] - 相關聯的文章文字內容。
+         */
         function generateShareButtons(imageUrl, postText = "") {
-            const container = document.getElementById('shareButtonsContainer'); if (!container) return; container.innerHTML = ''; 
+            if (!shareButtonsContainer) return; // 使用緩存的 DOM 元素
+
+            shareButtonsContainer.innerHTML = ''; 
             const siteToShareUrl = "https://sites.google.com/view/fycd-tc/%E6%BF%9F%E5%85%AC%E5%A0%B1";
             const encodedSiteToShareUrl = encodeURIComponent(siteToShareUrl);
             const shareTextContent = postText ? postText.substring(0, 100) + (postText.length > 100 ? "..." : "") : document.title;
             const lineShareText = encodeURIComponent(`${shareTextContent}\n${siteToShareUrl}`);
+
             const shares = [
                 {
                     name: 'Facebook',
                     action: (event) => {
-                        event.stopPropagation(); showShareButtons();
+                        event.stopPropagation(); 
+                        showShareButtons(); // 點擊後重新計時隱藏
                         const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedSiteToShareUrl}`;
                         window.open(fbShareUrl, '_blank', 'noopener,noreferrer');
                     },
                     icon: 'ICON/facebook.png'
                 },
-                { name: 'Line', action: (event) => { event.stopPropagation(); showShareButtons(); window.open(`line://msg/text/?${lineShareText}`, '_blank'); }, icon: 'ICON/line.png' },
-                { name: '複製連結', action: (event) => { 
-                        event.stopPropagation(); showShareButtons(); const btn = event.currentTarget;
+                { 
+                    name: 'Line', 
+                    action: (event) => { 
+                        event.stopPropagation(); 
+                        showShareButtons(); 
+                        window.open(`line://msg/text/?${lineShareText}`, '_blank'); 
+                    }, 
+                    icon: 'ICON/line.png' 
+                },
+                { 
+                    name: '複製連結', 
+                    action: async (event) => { // 使用 async/await 處理 clipboard API
+                        event.stopPropagation(); 
+                        showShareButtons(); 
+                        const btn = event.currentTarget;
                         const textToCopy = `網站連結：${siteToShareUrl}\n圖片連結：${imageUrl}`;
-                        navigator.clipboard.writeText(textToCopy).then(() => { 
-                            if (btn) { const orig = btn.innerHTML; btn.innerHTML = '✅ 已複製'; setTimeout(() => { if (btn.parentNode) { btn.innerHTML = orig; }}, 1500); }
-                        }).catch(err => { console.error('無法複製連結: ', err); alert('複製連結失敗。'); }); 
-                    }, icon: 'ICON/link.png'
+                        try {
+                            await navigator.clipboard.writeText(textToCopy);
+                            if (btn) { 
+                                const orig = btn.innerHTML; 
+                                btn.innerHTML = '✅ 已複製'; 
+                                setTimeout(() => { 
+                                  // 檢查按鈕是否仍在 DOM 中，以避免錯誤
+                                  if (btn.parentNode) { 
+                                    btn.innerHTML = orig; 
+                                  }
+                                }, 1500); 
+                            }
+                        } catch (err) { 
+                            console.error('無法複製連結: ', err); 
+                            // 這裡使用通用的 alert 模態框
+                            // alert('複製連結失敗。請手動複製以下內容：\n' + textToCopy);
+                            if (typeof customAlert === 'function') {
+                                customAlert('複製連結失敗。請手動複製以下內容：\n' + textToCopy);
+                            } else {
+                                alert('複製連結失敗。請手動複製以下內容：\n' + textToCopy);
+                            }
+                        }
+                    }, 
+                    icon: 'ICON/link.png'
                 }
             ];
+
             shares.forEach(share => {
                 const element = share.url ? document.createElement('a') : document.createElement('button');
-                element.innerHTML = `<img src="${share.icon}" alt="${share.name}" class="share-btn-icon">`; element.title = share.title || `分享到 ${share.name}`;
+                // 確保分享圖標的路徑也考慮 PWA_SUB_PATH
+                const iconSrc = getImageUrl(share.icon); 
+                element.innerHTML = `<img src="${iconSrc}" alt="${share.name}" class="share-btn-icon">`; 
+                element.title = share.title || `分享到 ${share.name}`;
                 if (share.className) element.classList.add(share.className);
-                if (share.action) element.addEventListener('click', share.action); container.appendChild(element);
+                if (share.action) element.addEventListener('click', share.action); 
+                shareButtonsContainer.appendChild(element);
             });
             showShareButtons();
         }
 
+        /**
+         * 顯示圖片模態視窗。
+         * @param {string} clickedImgSrc - 被點擊的圖片 src。
+         */
         function showModal(clickedImgSrc) {
-            updateImageList(); const index = imageList.indexOf(clickedImgSrc); if (index === -1) return;
+            updateImageList(); 
+            const index = imageList.indexOf(clickedImgSrc); 
+            if (index === -1) return; // 如果找不到圖片，則不執行
+
             currentImageIndex = index;
-            const modal = document.getElementById("imageModal"); const modalImg = document.getElementById("modalImage");
-            modalImg.src = imageList[currentImageIndex]; 
-            modal.style.display = "flex"; document.body.style.overflow = 'hidden';
-            let postTextForShare = "";
-            const originalPost = filteredPosts.find(p => getImageUrl(p.image) === modalImg.src);
-            if (originalPost && originalPost.text) postTextForShare = originalPost.text;
-            generateShareButtons(modalImg.src, postTextForShare);
+            modalImage.src = imageList[currentImageIndex]; // 使用緩存的 DOM 元素
+            imageModal.style.display = "flex"; // 使用緩存的 DOM 元素
+            document.body.style.overflow = 'hidden'; // 防止背景滾動
+
+            // 尋找原始文章文字以用於分享
+            const originalPost = filteredPosts.find(p => getImageUrl(p.image) === modalImage.src);
+            let postTextForShare = originalPost && originalPost.text ? originalPost.text : "";
+            
+            generateShareButtons(modalImage.src, postTextForShare);
             showModalNavButtons();
         }
 
+        /** 隱藏圖片模態視窗。 */
         function hideModal() {
-            const modal = document.getElementById("imageModal"); modal.style.display = "none";
-            document.body.style.overflow = 'auto'; currentImageIndex = -1;
-            clearTimeout(shareButtonsTimeout); hideShareButtons();
-            clearTimeout(modalNavButtonsTimeout); hideModalNavButtons();
+            imageModal.style.display = "none"; // 使用緩存的 DOM 元素
+            document.body.style.overflow = 'auto'; // 恢復背景滾動
+            currentImageIndex = -1; // 重置索引
+            clearTimeout(shareButtonsTimeout); 
+            hideShareButtons();
+            clearTimeout(modalNavButtonsTimeout); 
+            hideModalNavButtons();
         }
         
+        /**
+         * 導航到上一張或下一張圖片。
+         * @param {number} direction - 1 為下一張，-1 為上一張。
+         */
         function navigateModalImage(direction) {
             if (currentImageIndex === -1 || imageList.length === 0) return;
+
             currentImageIndex += direction;
-            if (currentImageIndex < 0) currentImageIndex = imageList.length - 1; 
-            else if (currentImageIndex >= imageList.length) currentImageIndex = 0; 
-            const newImgSrc = imageList[currentImageIndex];
-            document.getElementById("modalImage").src = newImgSrc;
-            let postTextForShare = "";
-            const originalPost = filteredPosts.find(p => getImageUrl(p.image) === newImgSrc);
-            if (originalPost && originalPost.text) postTextForShare = originalPost.text;
-            generateShareButtons(newImgSrc, postTextForShare);
-            showModalNavButtons();
+            // 循環顯示圖片
+            if (currentImageIndex < 0) {
+              currentImageIndex = imageList.length - 1; 
+            } else if (currentImageIndex >= imageList.length) {
+              currentImageIndex = 0; 
+            }
+            
+            modalImage.src = imageList[currentImageIndex]; // 使用緩存的 DOM 元素
+
+            // 重新生成分享按鈕（確保 URL 和文本與當前圖片匹配）
+            const originalPost = filteredPosts.find(p => getImageUrl(p.image) === modalImage.src);
+            let postTextForShare = originalPost && originalPost.text ? originalPost.text : "";
+            generateShareButtons(modalImage.src, postTextForShare);
+            showModalNavButtons(); // 重新顯示導航按鈕並計時
         }
         
-        document.getElementById("content").addEventListener("click", function (e) {
-          if (e.target.tagName === "IMG" && e.target.closest(".post")) showModal(e.target.src);
+        // 使用事件委託，監聽文章內容區域的圖片點擊
+        contentContainer.addEventListener("click", function (e) { // 使用緩存的 DOM 元素
+          if (e.target.tagName === "IMG" && e.target.closest(".post")) {
+            showModal(e.target.src);
+          }
         });
 
-        const imageModal = document.getElementById('imageModal');
-        const modalCloseButton = document.getElementById('modalCloseBtn'); 
-
-        if (imageModal) {
-            imageModal.addEventListener('click', (event) => { if (event.target === imageModal) hideModal(); });
-            imageModal.addEventListener('mousemove', () => { if(imageModal.style.display === "flex") { showShareButtons(); showModalNavButtons(); } });
-            imageModal.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { touchStartX = e.touches[0].clientX; touchEndX = 0; }}, { passive: true });
-            imageModal.addEventListener('touchmove', (e) => { if (e.touches.length === 1) touchEndX = e.touches[0].clientX; }, { passive: true });
+        // === 模態視窗事件監聽器 ===
+        if (imageModal) { // 使用緩存的 DOM 元素
+            // 點擊模態視窗背景時關閉
+            imageModal.addEventListener('click', (event) => { 
+              if (event.target === imageModal) {
+                hideModal(); 
+              }
+            });
+            // 鼠標移動時顯示導航和分享按鈕
+            imageModal.addEventListener('mousemove', () => { 
+              if(imageModal.style.display === "flex") { 
+                showShareButtons(); 
+                showModalNavButtons(); 
+              } 
+            });
+            // 觸摸開始
+            imageModal.addEventListener('touchstart', (e) => { 
+              if (e.touches.length === 1) { 
+                touchStartX = e.touches[0].clientX; 
+                touchEndX = 0; 
+              }
+            }, { passive: true }); // passive: true 提高滾動性能
+            // 觸摸移動
+            imageModal.addEventListener('touchmove', (e) => { 
+              if (e.touches.length === 1) {
+                touchEndX = e.touches[0].clientX; 
+              }
+            }, { passive: true });
+            // 觸摸結束，判斷滑動方向
             imageModal.addEventListener('touchend', () => {
-                if (touchEndX === 0 || Math.abs(touchStartX - touchEndX) < swipeThreshold) return;
-                if (touchEndX < touchStartX) navigateModalImage(1); 
-                else if (touchEndX > touchStartX) navigateModalImage(-1);
-                touchStartX = 0; touchEndX = 0; // Reset touch state
+                if (touchEndX === 0 || Math.abs(touchStartX - touchEndX) < swipeThreshold) {
+                  // 如果沒有移動或移動距離太小，則視為點擊，重新顯示按鈕
+                  showShareButtons(); 
+                  showModalNavButtons(); 
+                  return;
+                }
+                if (touchEndX < touchStartX) { // 向左滑動 (下一張)
+                  navigateModalImage(1); 
+                } else if (touchEndX > touchStartX) { // 向右滑動 (上一張)
+                  navigateModalImage(-1);
+                }
+                touchStartX = 0; 
+                touchEndX = 0; // 重置觸摸狀態
             });
         }
-        const modalImageElement = document.getElementById('modalImage');
-        if (modalImageElement) modalImageElement.addEventListener('click', (e) => { e.stopPropagation(); showShareButtons(); showModalNavButtons(); });
-        if (modalCloseButton) modalCloseButton.addEventListener('click', hideModal);
+        // 點擊圖片本身時，不關閉模態視窗，而是重新顯示按鈕
+        if (modalImage) { // 使用緩存的 DOM 元素
+          modalImage.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            showShareButtons(); 
+            showModalNavButtons(); 
+          });
+        }
+        if (modalCloseBtn) { // 使用緩存的 DOM 元素
+          modalCloseBtn.addEventListener('click', hideModal);
+        }
 
-        const modalPrevButton = document.getElementById('modalPrevBtn');
-        const modalNextButton = document.getElementById('modalNextBtn');
-        if (modalPrevButton) modalPrevButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(-1); });
-        if (modalNextButton) modalNextButton.addEventListener('click', (e) => { e.stopPropagation(); navigateModalImage(1); });
+        // 導航按鈕點擊事件
+        if (modalPrevBtn) { // 使用緩存的 DOM 元素
+          modalPrevBtn.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            navigateModalImage(-1); 
+          });
+        }
+        if (modalNextBtn) { // 使用緩存的 DOM 元素
+          modalNextBtn.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            navigateModalImage(1); 
+          });
+        }
+
+        // 鍵盤事件監聽器 (Esc 關閉, 左右箭頭導航)
         document.addEventListener("keydown", function (e) {
-          const modalVisible = imageModal.style.display === "flex"; if (!modalVisible) return;
-          if (e.key === "Escape") hideModal();
-          else if (e.key === "ArrowRight") navigateModalImage(1);
-          else if (e.key === "ArrowLeft") navigateModalImage(-1);
+          const modalVisible = imageModal.style.display === "flex"; // 使用緩存的 DOM 元素
+          if (!modalVisible) return; // 如果模態視窗沒有打開，則不處理
+
+          if (e.key === "Escape") {
+            hideModal();
+          } else if (e.key === "ArrowRight") {
+            navigateModalImage(1);
+          } else if (e.key === "ArrowLeft") {
+            navigateModalImage(-1);
+          }
         });
 
+        // 初次載入文章
         fetchAndRender();
 
-        // === PWA Logic Initialization ===
+        // === PWA Logic Initialization (傳遞 DOM 元素給 pwa-notifications.js) ===
         const pwaDomElements = {
             settingsBtn: document.getElementById('settings-btn'),
             settingsPanel: document.getElementById('settings-panel'),
@@ -812,12 +1089,16 @@
             notificationConfirmationModal: document.getElementById('notificationConfirmationModal'),
             permissionDeniedModalOverlay: document.getElementById('permissionDeniedModalOverlay'),
             permissionDeniedModal: document.getElementById('permissionDeniedModal'),
+            // 新增：將通用模態框元素也傳遞過去
+            customConfirmModalOverlay: document.getElementById('customConfirmModalOverlay'),
+            customAlertModalOverlay: document.getElementById('customAlertModalOverlay'),
         };
 
+        // 確保 initializePwaLogic 函數存在於 pwa-notifications.js 中
         if (typeof initializePwaLogic === 'function') {
             initializePwaLogic(pwaDomElements);
         } else {
-            console.error("Error: initializePwaLogic function not found. Is pwa-notifications.js loaded correctly?");
+            console.error("錯誤: 找不到 initializePwaLogic 函數。pwa-notifications.js 是否正確載入？");
         }
     });
   </script>

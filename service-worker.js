@@ -3,18 +3,24 @@
 // === PWA 設定常數 (與 pwa-notifications.js 保持一致) ===
 // 如果你的 PWA 部署在子路徑下 (例如: https://yourusername.github.io/your-repo-name/)
 // 則 PWA_SUB_PATH 應該是 /your-repo-name。如果直接部署在根目錄，則為 '' (空字串)。
-const PWA_SUB_PATH = '/jigong-news'; // 請根據您的實際部署路徑設定
+// !!! 本地開發時，請將此處設為 '' (空字串) !!!
+// !!! 部署到 GitHub Pages 等子路徑時，請設為 '/your-repo-name'，例如 '/jigong-news' !!!
+const PWA_SUB_PATH = "/jigong-news"; // <--- 已修改為本地開發的正確路徑！
+// 部署到 GitHub Pages 時，再將其改回 '/jigong-news'
 
 // !!! 請在這裡替換為你的 Render 後端實際 URL (與 pwa-notifications.js 保持一致) !!!
 const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
 
-const CACHE_NAME = 'jigong-pwa-cache-v8'; // 更新版本號以強制更新緩存，用於本次更新
+// 每次更新預緩存資源時，請務必更新版本號以強制 Service Worker 更新
+// 緩存版本號必須不同於舊的，否則 Service Worker 不會重新安裝並更新緩存
+const CACHE_NAME = 'jigong-pwa-cache-v18'; // <--- 已更新版本號以強制更新
 
 // 需要預緩存的資源列表
 // 確保所有本地資源的路徑都以 PWA_SUB_PATH 開頭
 const urlsToCache = [
-  PWA_SUB_PATH + '/',
-  PWA_SUB_PATH + '/index.html',
+  PWA_SUB_PATH + '/',              // 應用程式的根路徑 (例如: /)
+  PWA_SUB_PATH + '/index.html',    // 顯式指定 index.html
+  PWA_SUB_PATH + '/manifest.json', // manifest.json 也應被緩存
   PWA_SUB_PATH + '/posts.json',
   PWA_SUB_PATH + '/pwa-notifications.js',
   PWA_SUB_PATH + '/service-worker.js', // Service Worker 本身也應緩存
@@ -27,13 +33,9 @@ const urlsToCache = [
   PWA_SUB_PATH + '/ICON/facebook.png', // 確認 ICON 是大寫還是小寫，與實際檔案名稱匹配
   PWA_SUB_PATH + '/ICON/line.png',
   PWA_SUB_PATH + '/ICON/link.png',
-  // 注意：您之前列出的 'ICON/instagram.png' 在您最新的 urlsToCache 中沒有，
-  // 請確認您是否有這個檔案，如果沒有請從這裡移除，或者確保它存在。
-  
-  // 外部資源，直接使用完整 URL
+  // 外部 CDN 資源直接使用完整 URL
   'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css',
-  'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js', // 確保這裡使用 .min.js 而不是裸露的 flatpickr
-  // 如果有其他圖片或 CSS/JS 檔案，請將它們加入 urlsToCache
+  'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js', 
 ];
 
 self.addEventListener('install', event => {
@@ -43,24 +45,25 @@ self.addEventListener('install', event => {
       const cache = await caches.open(CACHE_NAME);
       console.log(`[Service Worker] Opened cache: ${CACHE_NAME}. Starting to add URLs.`);
 
+      // 遍歷所有要緩存的 URL
       for (const url of urlsToCache) {
         try {
           // 嘗試逐個緩存每個 URL
-          // fetch(url) 會先嘗試從網路獲取，然後 put 到緩存
           const response = await fetch(url);
-          if (!response.ok) {
-            // 如果響應不成功（例如 404, 500），拋出錯誤
+          // 對於同源請求，檢查響應是否成功 (例如 200 OK)
+          // 對於跨域的 opaque 響應 (response.type === 'opaque')，response.ok 總是 false，但它們仍然可以被緩存
+          if (!response.ok && response.type === 'basic') {
+            // 如果是同源請求且響應不成功（例如 404, 500），拋出錯誤
             throw new Error(`Failed to fetch ${url}: Status ${response.status} ${response.statusText}`);
           }
           // 重要：將 response 複製一份放入緩存，因為原始的 response 可能會被消費掉
           await cache.put(url, response.clone()); 
           console.log(`[Service Worker] Successfully cached: ${url}`);
         } catch (error) {
+          // 捕獲單個 URL 緩存失敗的錯誤，記錄下來。
+          // 如果任何一個預緩存失敗，整個 Service Worker 安裝就會失敗。
           console.error(`[Service Worker] Failed to cache ${url}:`, error);
-          // 即使有單個 URL 失敗，Service Worker 的安裝也會失敗，
-          // 所以在這裡拋出錯誤，讓外層的 event.waitUntil 捕獲它。
-          // 這會導致安裝失敗，但會提供詳細的日誌，幫助您找到問題來源。
-          throw error; 
+          throw error; // 重新拋出錯誤以確保 Promise 被拒絕，Service Worker 不會被激活
         }
       }
       console.log('[Service Worker] All specified URLs attempted to be cached successfully.');
@@ -68,13 +71,12 @@ self.addEventListener('install', event => {
       self.skipWaiting(); // 強制新的 Service Worker 在安裝後立即激活
     })().catch(error => {
       console.error('[Service Worker] Installation failed overall. Please check logs for failed URL:', error);
-      // 可以考慮在這裡顯示一個通知，通知用戶 Service Worker 安裝失敗
+      // 您可以選擇在這裡顯示一個通知，通知用戶 Service Worker 安裝失敗
       // self.registration.showNotification('Service Worker Error', {
       //   body: '無法完全啟用離線功能和推播通知。請檢查網絡或重新載入。',
       //   icon: PWA_SUB_PATH + '/icons/icon-192.png'
       // });
-      // 重新拋出錯誤以確保 Promise 被拒絕，Service Worker 不會被激活
-      throw error;
+      throw error; // 重新拋出錯誤以確保 Promise 被拒絕，Service Worker 不會被激活
     })
   );
 });
@@ -117,15 +119,13 @@ self.addEventListener('fetch', event => {
   }
 
   // 對於 posts.json，始終嘗試從網路獲取最新版本，失敗則回退到緩存
-  // 注意這裡的路徑檢查，應包含 PWA_SUB_PATH
-  // 使用 new URL 構建完整路徑進行比較，更健壯
   const postsJsonFullPath = new URL(`${PWA_SUB_PATH}/posts.json`, self.location.origin).href;
   if (event.request.url === postsJsonFullPath) {
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
           // 如果網路請求成功，則更新緩存
-          if (networkResponse && networkResponse.ok) {
+          if (networkResponse && networkResponse.ok) { 
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then(cache => {
               cache.put(event.request, responseToCache);
@@ -153,8 +153,10 @@ self.addEventListener('fetch', event => {
         // console.log(`[Service Worker] Fetching from network: ${event.request.url}`);
         return fetch(event.request).then(networkResponse => {
           // 如果網路響應有效，則緩存它以供將來使用
-          // type !== 'basic' 表示它可能是一個跨域的 opaque 響應，這類響應無法檢查狀態碼
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') { 
+          // 對於同源請求，檢查 response.ok 和 status 200
+          // 對於跨域的 opaque 響應，只需要檢查 networkResponse 是否存在即可緩存
+          const isSameOrigin = new URL(event.request.url).origin === self.location.origin;
+          if (networkResponse && (networkResponse.ok || !isSameOrigin)) { 
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then(cache => {
               cache.put(event.request, responseToCache);
