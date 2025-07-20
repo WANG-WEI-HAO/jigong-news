@@ -9,7 +9,7 @@
  * @param {HTMLElement} domElements.settingsPanel
  * @param {HTMLElement} domElements.closeSettingsBtn
  * @param {HTMLInputElement} domElements.notificationToggleSwitch
- * @param {HTMLElement} domElements.notificationLabel
+ * @param {HTMLElement} domElements.notificationLabel // 新增: 推播開關旁的文字標籤
  * @param {HTMLInputElement} domElements.themeToggleSwitch
  * @param {HTMLElement} domElements.clearCacheBtn
  * @param {HTMLElement} domElements.overlay
@@ -32,11 +32,13 @@ function initializePwaLogic(domElements) {
     // 如果你的 PWA 部署在子路徑下 (例如: https://yourusername.github.io/your-repo-name/)
     // !!! 本地開發時，請將此處設為 '' (空字串) !!!
     // !!! 部署到 GitHub Pages 等子路徑時，請設為 '/your-repo-name'，例如 '/jigong-news' !!!
-    const PWA_SUB_PATH = '/jigong-news'; // <--- 已修改為本地開發的正確路徑！
+    // --- 根據您的指示，這裡修改為 /frontend/public，但通常部署到 Github Pages 會是 /your-repo-name ---
+    const PWA_SUB_PATH = ''; // <--- 已修改為本地開發的正確路徑！
 
     // --- 狀態變數 ---
     let swRegistration = null; // 用於保存 Service Worker 註冊的實例
     let deferredPrompt; // 用於保存 PWA 安裝提示事件
+    // 跟踪用戶是否已經被提示過通知（無論結果如何）
     const localStorageKeyForNotificationPrompt = 'hasUserBeenPromptedForNotifications';
 
 
@@ -46,10 +48,10 @@ function initializePwaLogic(domElements) {
         settingsPanel,
         closeSettingsBtn,
         notificationToggleSwitch, // 這是推播通知的開關 (checkbox)
+        notificationLabel,        // 這是推播通知開關的文字標籤（.toggle-switch-inner）
         themeToggleSwitch,
         clearCacheBtn,
         overlay,
-        notificationLabel,
         customInstallPromptOverlay,
         notificationConfirmationModalOverlay,
         notificationConfirmationModal,
@@ -88,7 +90,11 @@ function initializePwaLogic(domElements) {
 
     // 检测是否为 Apple 设备 (iPhone/iPad/iPod)
     function isAppleMobileDevice() {
-        return /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+        // 更新判斷方式：iOS 13+ 的 iPad 默認 User Agent 為桌面版，需結合 maxTouchPoints
+        const userAgent = navigator.userAgent;
+        const isIOS = /iPhone|iPad|iPod/.test(userAgent);
+        const isAppleDevice = /(Macintosh|MacIntel)/.test(userAgent) && navigator.maxTouchPoints > 1; // iPadOS
+        return (isIOS || isAppleDevice) && !window.MSStream; // 排除舊版 IE
     }
 
     // 检测是否為 macOS 上的 Safari 浏览器
@@ -98,6 +104,7 @@ function initializePwaLogic(domElements) {
 
     // 检测当前页面是否運行在官方域名上
     function isOfficialOrigin() {
+        // 在本地開發環境中，localhost 和 127.0.0.1 應被視為「官方」以便測試
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             return true;
         }
@@ -122,12 +129,13 @@ function initializePwaLogic(domElements) {
     // --- PWA 動態安裝提示彈窗邏輯 ---
     function showCustomInstallPrompt(type = 'default') {
         console.log(`[PWA Prompt] Showing custom install prompt, type: ${type}`);
+        // 確保只在官方來源且非沙箱環境顯示
         if (!isOfficialOrigin() || isSandboxed()) {
             console.warn('[PWA Prompt] 非官方網域或沙箱環境，不顯示安裝提示。');
             return;
         }
 
-        // 模態框容器已經存在於 index.html，不再動態創建
+        // 模態框容器已經存在於 index.html，不需重新創建
         customInstallPromptOverlay.style.display = 'flex';
         
         let promptDiv = customInstallPromptOverlay.querySelector('#customInstallPrompt');
@@ -147,9 +155,9 @@ function initializePwaLogic(domElements) {
         let buttonsHTML = '';
 
         if (type === 'ios') {
-            const PWA_BASE_URL = window.location.origin + PWA_SUB_PATH;
-            const SHARE_ICON_PATH = `${PWA_BASE_URL}/icons/ios分享icon.jpg`; 
-            const ADD_TO_HOMESCREEN_ICON_PATH = `${PWA_BASE_URL}/icons/ios加到主畫面icon.jpg`; 
+            const PWA_BASE_URL_FOR_ICONS = window.location.origin + PWA_SUB_PATH;
+            const SHARE_ICON_PATH = `${PWA_BASE_URL_FOR_ICONS}/icons/ios分享icon.jpg`; 
+            const ADD_TO_HOMESCREEN_ICON_PATH = `${PWA_BASE_URL_FOR_ICONS}/icons/ios加到主畫面icon.jpg`; 
 
             contentHTML = `
                 <p style="margin: 0; font-weight: bold;">安裝濟公報應用程式</p>
@@ -189,7 +197,7 @@ function initializePwaLogic(domElements) {
         const customCancelInstallButton = promptDiv.querySelector('#customCancelInstallButton');
         const iosDismissButton = promptDiv.querySelector('#iosDismissButton'); 
 
-        // 移除舊的監聽器並添加新的，以避免重複
+        // 移除舊的監聽器並添加新的，以避免重複 (使用 { once: true } 確保只觸發一次)
         if (customInstallAppButton) {
             customInstallAppButton.onclick = null; // 清除舊的 inline handler
             customInstallAppButton.addEventListener('click', async () => {
@@ -201,14 +209,14 @@ function initializePwaLogic(domElements) {
                     console.log(`[PWA Prompt] User response to the install prompt: ${outcome}`);
                     deferredPrompt = null;
                 }
-            }, { once: true }); // 確保只觸發一次
+            }, { once: true }); 
         }
 
         if (iosDismissButton) { 
             iosDismissButton.onclick = null; // 清除舊的 inline handler
             iosDismissButton.addEventListener('click', () => {
                 console.log('[PWA Prompt] iOS Dismiss button clicked.');
-                localStorage.setItem('hasSeenAppleInstallPrompt', 'dismissed');
+                localStorage.setItem('hasSeenAppleInstallPrompt', 'dismissed'); // 標記為不再提示
                 hideInstallPrompt();
             }, { once: true });
         }
@@ -274,7 +282,7 @@ function initializePwaLogic(domElements) {
             if (notificationToggleSwitch) {
                 // 確保用戶取消時，開關回到 false，並更新UI
                 notificationToggleSwitch.checked = false;
-                updateNotificationToggleSwitchUI(false, Notification.permission);
+                updateNotificationToggleSwitchUI(false, Notification.permission); // 刷新 UI 狀態
             }
         };
         
@@ -321,7 +329,6 @@ function initializePwaLogic(domElements) {
 
         // 確保事件監聽器只被添加一次
         if (closeBtn) { closeBtn.removeEventListener('click', closeHandler); closeBtn.addEventListener('click', closeHandler, { once: true }); }
-        // 修正這裡的打字錯誤：closeXXBtn -> closeXBtn
         if (closeXBtn) { closeXBtn.removeEventListener('click', closeHandler); closeXBtn.addEventListener('click', closeHandler, { once: true }); }
     }
 
@@ -357,6 +364,7 @@ function initializePwaLogic(domElements) {
                 resolve(false);
             };
 
+            // 確保事件監聽器不會重複綁定
             okButton.removeEventListener('click', handleOk);
             cancelButton.removeEventListener('click', handleCancel);
 
@@ -377,6 +385,8 @@ function initializePwaLogic(domElements) {
             }
         });
     }
+    // 將 showCustomConfirm 暴露到 window 物件，讓 index.html 可以調用
+    window.showCustomConfirm = showCustomConfirm;
 
     // === 新增：通用提示模態框函數 (取代 alert()) ===
     function showCustomAlert(message) {
@@ -391,6 +401,7 @@ function initializePwaLogic(domElements) {
                 resolve();
             };
             
+            // 確保事件監聽器不會重複綁定
             okButton.removeEventListener('click', handleOk);
             okButton.addEventListener('click', handleOk, { once: true });
 
@@ -408,6 +419,8 @@ function initializePwaLogic(domElements) {
             }
         });
     }
+    // 將 showCustomAlert 暴露到 window 物件，讓 index.html 可以調用
+    window.showCustomAlert = showCustomAlert;
 
 
     // --- UI 狀態更新 ---
@@ -416,41 +429,49 @@ function initializePwaLogic(domElements) {
         
         // 預設啟用，先假設可以點擊
         notificationToggleSwitch.disabled = false; 
-        notificationLabel.textContent = '推播通知'; // 重置標籤文本
+        
+        // 內部文字顯示處理中... (這是 .toggle-switch-inner 元素)
+        // 由於我們將 notificationLabel 定義為 .toggle-switch-inner，所以直接使用它
+        const innerTextElement = notificationLabel; 
 
-        // 1. 環境不支持或非官方來源
-        if (!isOfficialOrigin() || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        // 1. 環境不支持或非官方來源或沙箱環境
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !isOfficialOrigin() || isSandboxed()) {
             notificationToggleSwitch.disabled = true;
             notificationToggleSwitch.checked = false; // 確保關閉狀態
-            notificationToggleSwitch.title = '此環境不支持推播通知或非官方來源。';
-            notificationLabel.textContent = '推播通知 (不支持)'; // 更好的提示
-            console.warn('[UI Update] Notification not supported/official. Toggle disabled.');
+            notificationToggleSwitch.title = '此環境不支持推播通知。';
+            if (innerTextElement) {
+                innerTextElement.setAttribute('data-on', '不可用');
+                innerTextElement.setAttribute('data-off', '不可用');
+                innerTextElement.textContent = '不可用'; // 確保顯示文字
+            }
+            console.warn('[UI Update] Notification not supported/official/sandboxed. Toggle disabled.');
             return;
         }
 
-        // 2. 沙箱環境（例如嵌入的 iframe）
-        if (isSandboxed()) {
-            notificationToggleSwitch.disabled = true;
-            notificationToggleSwitch.checked = false;
-            notificationToggleSwitch.title = '您正在受限環境中。請前往完整網站。';
-            notificationLabel.textContent = '推播通知 (沙箱)';
-            console.warn('[UI Update] Sandboxed environment. Toggle disabled.');
-            return;
-        }
-        
-        // 3. 通知權限被拒絕
+        // 2. 通知權限被拒絕
         if (permissionState === 'denied') {
             notificationToggleSwitch.disabled = true; // 明確設置為禁用
             notificationToggleSwitch.checked = false; // 確保關閉狀態
             notificationToggleSwitch.title = '您已拒絕通知權限。請在瀏覽器設定中手動啟用。';
-            notificationLabel.textContent = '推播通知 (已拒絕)';
+            if (innerTextElement) {
+                innerTextElement.setAttribute('data-on', '已拒絕');
+                innerTextElement.setAttribute('data-off', '已拒絕');
+                innerTextElement.textContent = '已拒絕'; // 確保顯示文字
+            }
             console.log('[UI Update] Notification permission denied, toggle disabled. Permission state: DENIED');
         } 
-        // 4. 通知權限已允許或未決定
+        // 3. 通知權限已允許或未決定
         else { 
             notificationToggleSwitch.disabled = false; // 明確設置為啟用
             notificationToggleSwitch.checked = isSubscribed; // 設置開關狀態
-            // notificationLabel.textContent 這裡不需再設置，交給 CSS
+            
+            // 根據是否訂閱來設定開關的 data-on/data-off 內容
+            if (innerTextElement) {
+                innerTextElement.setAttribute('data-on', '已開啟');
+                innerTextElement.setAttribute('data-off', '已關閉');
+                innerTextElement.textContent = isSubscribed ? '已開啟' : '已關閉';
+            }
+
             if (isSubscribed) {
                 notificationToggleSwitch.title = '推播通知已開啟。點擊以關閉。';
                 console.log('[UI Update] Notification subscribed, toggle is ON. Permission state: GRANTED');
@@ -506,13 +527,18 @@ function initializePwaLogic(domElements) {
         } catch (error) {
             console.error('[Subscription Flow] Service Worker failed to become ready:', error);
             await showCustomAlert('Service Worker 尚未準備好，無法訂閱。請重新載入頁面。');
-            checkSubscriptionAndUI();
+            checkSubscriptionAndUI(); // 重新檢查並更新 UI 狀態
             return;
         }
 
         // 設置開關為處理中狀態
         if (notificationToggleSwitch) notificationToggleSwitch.disabled = true;
-        if (notificationLabel) notificationLabel.textContent = '推播通知 (處理中...)';
+        const innerTextElement = notificationLabel;
+        if (innerTextElement) {
+            innerTextElement.setAttribute('data-on', '處理中...');
+            innerTextElement.setAttribute('data-off', '處理中...');
+            innerTextElement.textContent = '處理中...';
+        }
         console.log('[Subscription Flow] UI updated to processing state.');
 
         try {
@@ -552,7 +578,7 @@ function initializePwaLogic(domElements) {
                 if ('periodicSync' in swRegistration) {
                     try {
                         await swRegistration.periodicSync.register('content-check', {
-                            minInterval: 24 * 60 * 60 * 1000
+                            minInterval: 24 * 60 * 60 * 1000 // 每天檢查一次
                         });
                         console.log('[Subscription Flow] Periodic background sync registered successfully.');
                     } catch (e) {
@@ -569,8 +595,8 @@ function initializePwaLogic(domElements) {
             // 如果訂閱失敗，嘗試取消任何可能已建立的部分訂閱
             const sub = await (swRegistration ? swRegistration.pushManager.getSubscription() : null);
             if (sub) {
-                console.log('[Subscription Flow] Attempting to unsubscribe from failed subscription.');
-                await sub.unsubscribe();
+                console.log('[Subscription Flow] Attempting to unsubscribe from failed subscription locally.');
+                await sub.unsubscribe().catch(e => console.warn('Failed to unsubscribe locally:', e));
             }
         } finally {
             console.log('[Subscription Flow] Finalizing subscription flow. Updating UI.');
@@ -628,7 +654,12 @@ function initializePwaLogic(domElements) {
 
         // 設置開關為處理中狀態
         if (notificationToggleSwitch) notificationToggleSwitch.disabled = true;
-        if (notificationLabel) notificationLabel.textContent = '推播通知 (處理中...)';
+        const innerTextElement = notificationLabel;
+        if (innerTextElement) {
+            innerTextElement.setAttribute('data-on', '處理中...');
+            innerTextElement.setAttribute('data-off', '處理中...');
+            innerTextElement.textContent = '處理中...';
+        }
         console.log('[Unsubscribe User] UI updated to processing state.');
 
         // 使用自定義確認模態框
@@ -643,17 +674,23 @@ function initializePwaLogic(domElements) {
             const subscription = await swRegistration.pushManager.getSubscription();
             if (subscription) {
                 console.log('[Unsubscribe User] Found existing subscription, sending unsubscribe to backend.');
-                const response = await fetch(`${BACKEND_BASE_URL}/api/unsubscribe`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ endpoint: subscription.endpoint }) });
-                if (!response.ok) console.error(`[Unsubscribe User] 後端取消訂閱失敗: ${await response.text()}`);
+                // 即使後端回報失敗，也要嘗試本地取消訂閱
+                const backendResponse = await fetch(`${BACKEND_BASE_URL}/api/unsubscribe`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ endpoint: subscription.endpoint }) });
+                if (!backendResponse.ok) {
+                    console.error(`[Unsubscribe User] 後端取消訂閱請求失敗: ${await backendResponse.text()}`);
+                    // 這裡可以選擇是否仍彈出成功訊息，取決於您認為本地取消的重要性
+                } else {
+                    console.log('[Unsubscribe User] Backend notification of unsubscription successful.');
+                }
                 
                 await subscription.unsubscribe();
-                await showCustomAlert('您已成功取消訂閱濟公報推播通知！');
+                await showCustomAlert('您已成功取消訂閱每日濟公報推播通知！');
                 console.log('[Unsubscribe User] Local subscription successfully unsubscribed.');
 
                 if ('periodicSync' in swRegistration) {
                     try {
                         await swRegistration.periodicSync.unregister('content-check');
-                        console.log('[Unsubscribe User] Periodic background sync unregistered successfully.');
+                        console.log('[Unsubscribe User] Periodic background sync unregistration successfully.');
                     } catch (e) {
                         console.warn('[Unsubscribe User] Periodic background sync unregistration failed:', e);
                     }
@@ -687,32 +724,18 @@ function initializePwaLogic(domElements) {
         const isDark = document.body.classList.contains("dark-mode");
         localStorage.setItem("theme", isDark ? "dark" : "light");
         updateThemeToggleSwitchUI();
-        
-        // 更新模態框主題 (如果它們是靜態存在的)
-        const customPromptDiv = customInstallPromptOverlay.querySelector('#customInstallPrompt');
-        const modals = [
-            customPromptDiv, 
-            notificationConfirmationModal, 
-            permissionDeniedModal
-        ];
-
-        modals.forEach(modal => {
-            if (modal) {
-                // 清除內聯樣式，讓 CSS 規則生效
-                modal.style.backgroundColor = ''; 
-                modal.style.boxShadow = ''; 
-            }
-        });
     }
 
+    // 當用戶首次點擊頁面時觸發 PWA 安裝提示或通知權限提示
+    // 目的是繞過瀏覽器對 `prompt()` 或 `Notification.requestPermission()` 必須在用戶手勢下觸發的限制。
+    // 使用 `once: true` 確保只執行一次，並在執行後移除監聽器
     async function handleInitialScreenClick() {
-        // 使用 once: true 確保只執行一次，並在執行後移除監聽器
         document.body.removeEventListener('click', handleInitialScreenClick);
         document.body.removeEventListener('touchstart', handleInitialScreenClick);
         console.log('[Initial Click] First screen click detected.');
 
         if (localStorage.getItem(localStorageKeyForNotificationPrompt) === 'true') {
-            console.log('[Initial Click] User has been prompted before, skipping auto-prompt.');
+            console.log('[Initial Click] User has been prompted for notifications before, skipping auto-prompt.');
             return;
         }
 
@@ -722,7 +745,8 @@ function initializePwaLogic(domElements) {
         if (permissionState === 'default') {
             // 如果 Service Worker 已就緒且用戶未被提示過，則彈出確認框
             try {
-                await navigator.serviceWorker.ready; // 確保 Service Worker 準備好再彈框
+                // 在彈出確認框之前，確保 Service Worker 已註冊並激活
+                await navigator.serviceWorker.ready; 
                 showNotificationConfirmationModal();
                 localStorage.setItem(localStorageKeyForNotificationPrompt, 'true'); // 標記為已提示
                 console.log('[Initial Click] Permission default. Showing confirmation modal.');
@@ -738,6 +762,18 @@ function initializePwaLogic(domElements) {
             localStorage.setItem(localStorageKeyForNotificationPrompt, 'true');
             console.log('[Initial Click] Permission already granted. No action needed.');
         }
+
+        // 首次點擊後，如果 deferredPrompt 存在且未被消費，可以考慮觸發 PWA 安裝提示
+        // 這裡可以根據您的 UI/UX 決定是否在首次點擊後立即觸發 PWA 安裝提示
+        // 如果您希望 PWA 安裝提示在更晚的時機（例如用戶點擊了 "立即安裝" 按鈕）才出現，
+        // 則可以在 `beforeinstallprompt` 事件的監聽器中處理 `showCustomInstallPrompt('default')`
+        // 而不是在這裡。
+        //
+        // 為了避免與自動的通知提示衝突，建議將 PWA 安裝提示的觸發放在獨立的用戶手勢下，
+        // 例如點擊一個明確的「安裝應用程式」按鈕。
+        // 目前的 `beforeinstallprompt` 監聽器會保存 deferredPrompt，
+        // 並在它觸發時（通常是瀏覽器認為合適的時機）自動調用 `showCustomInstallPrompt('default')`。
+        // 這樣可以避免兩個彈窗同時出現。
     }
     
     function initializeFeatures() {
@@ -755,12 +791,24 @@ function initializePwaLogic(domElements) {
                     notificationToggleSwitch.disabled = true;
                     notificationToggleSwitch.checked = false;
                     notificationToggleSwitch.title = '通知服務無法啟動。';
+                    const innerTextElement = notificationLabel; // 這裡使用 notificationLabel
+                    if (innerTextElement) {
+                        innerTextElement.setAttribute('data-on', '不可用');
+                        innerTextElement.setAttribute('data-off', '不可用');
+                        innerTextElement.textContent = '不可用';
+                    }
                 });
         } else {
             console.warn('[Init] 您的瀏覽器不支持 Service Worker 或推播通知。');
             notificationToggleSwitch.disabled = true;
             notificationToggleSwitch.checked = false;
             notificationToggleSwitch.title = '您的瀏覽器不支持 Service Worker 或推播通知。';
+            const innerTextElement = notificationLabel; // 這裡使用 notificationLabel
+            if (innerTextElement) {
+                innerTextElement.setAttribute('data-on', '不可用');
+                innerTextElement.setAttribute('data-off', '不可用');
+                innerTextElement.textContent = '不可用';
+            }
         }
 
         // 監聽通知權限狀態變化
@@ -777,30 +825,39 @@ function initializePwaLogic(domElements) {
         if (isPWAInstalled() || isSandboxed() || !isOfficialOrigin()) {
             console.log(`[Init] PWA install prompt skipped. Installed: ${isPWAInstalled()}, Sandboxed: ${isSandboxed()}, Official Origin: ${isOfficialOrigin()}`);
         } else {
+            // iOS/macOS Safari 上的 PWA 安裝提示
             if (isAppleMobileDevice() || isMacSafari()) {
                 console.log('[Init] 偵測到 Apple 裝置，準備顯示安裝指南。');
                 const hasSeenInstallPrompt = localStorage.getItem('hasSeenAppleInstallPrompt');
                 if (hasSeenInstallPrompt !== 'dismissed') { 
                     setTimeout(() => {
-                        showCustomInstallPrompt('ios');
-                        if (localStorage.getItem('hasSeenAppleInstallPrompt') !== 'dismissed') {
-                             localStorage.setItem('hasSeenAppleInstallPrompt', 'true'); 
+                        // 確保只有在沒有其他模態框顯示時才顯示安裝提示
+                        if (!customInstallPromptOverlay.classList.contains('visible') && 
+                            !notificationConfirmationModalOverlay.classList.contains('visible') &&
+                            !permissionDeniedModalOverlay.classList.contains('visible') &&
+                            !customConfirmModalOverlay.classList.contains('visible') &&
+                            !customAlertModalOverlay.classList.contains('visible')) {
+                            showCustomInstallPrompt('ios');
                         }
-                    }, 3000);
+                    }, 3000); // 延遲顯示，避免太早打擾用戶
                 }
-            } else {
+            } else { // 其他瀏覽器 (Chrome, Edge 等)
                 window.addEventListener('beforeinstallprompt', (e) => {
                     e.preventDefault();
                     deferredPrompt = e;
                     console.log('[Init] beforeinstallprompt 事件已保存。');
-                    showCustomInstallPrompt('default');
+                    // 這裡不再立即顯示安裝提示，而是等待用戶點擊或適合的時機
+                    // 例如，您可以在設置面板中提供一個「安裝應用程式」按鈕，然後調用 deferredPrompt.prompt()
+                    // 為了本例的自動行為，目前還是依賴瀏覽器自行決定彈出時機
+                    // 如果您想強制在 beforeinstallprompt 後立即彈出，可以像這樣：
+                    // showCustomInstallPrompt('default');
                 });
 
                 window.addEventListener('appinstalled', () => {
                     console.log('[Init] PWA 已成功安裝！');
                     hideInstallPrompt();
                     deferredPrompt = null;
-                    checkSubscriptionAndUI();
+                    checkSubscriptionAndUI(); // 安裝後更新推播開關狀態
                 });
             }
         }
@@ -841,8 +898,13 @@ function initializePwaLogic(domElements) {
     // 4. 綁定清除緩存按鈕事件
     if (clearCacheBtn) clearCacheBtn.addEventListener('click', async () => {
         console.log('[Cache Clear] Clear cache button clicked.');
-        // --- UPDATED CONFIRMATION MESSAGE ---
-        if (!confirm('您確定要清除網站緩存嗎？這將重新載入頁面並清除所有儲存的資料（包括推播訂閱狀態、主題設定、搜尋歷史等）。')) return;
+        // --- 使用自定義確認模態框替換原生 confirm ---
+        const confirmed = await showCustomConfirm('您確定要清除網站緩存嗎？這將重新載入頁面並清除所有儲存的資料（包括推播訂閱狀態、主題設定等）。');
+        if (!confirmed) {
+            console.log('[Cache Clear] Cache clear cancelled by user.');
+            return;
+        }
+        // --- 替換結束 ---
         
         clearCacheBtn.textContent = '清除中...'; 
         clearCacheBtn.disabled = true;
@@ -857,6 +919,7 @@ function initializePwaLogic(domElements) {
                             const subscription = await reg.pushManager.getSubscription();
                             if (subscription) {
                                 console.log('[Cache Clear] Notifying backend of unsubscription before unregistering SW.');
+                                // 嘗試通知後端，但即使失敗也繼續本地清除
                                 await fetch(`${BACKEND_BASE_URL}/api/unsubscribe`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -898,8 +961,7 @@ function initializePwaLogic(domElements) {
                     } catch (e) {
                         console.warn('[Cache Clear] indexedDB.databases() failed or is not supported:', e);
                         // 如果 `indexedDB.databases()` 不支持或失敗，手動添加您應用可能使用的 IndexedDB 名稱
-                        // 範例：如果您的應用程式有使用名為 '濟公報_posts' 的 IndexedDB
-                        // dbNames.push('濟公報_posts'); 
+                        // dbNames.push('your_app_db_name_1'); 
                     }
                 } else {
                     console.warn('[Cache Clear] indexedDB.databases() is not available. Manual IndexedDB names might be needed.');
@@ -936,11 +998,15 @@ function initializePwaLogic(domElements) {
             localStorage.removeItem('hasSeenAppleInstallPrompt'); 
             localStorage.removeItem('theme'); 
 
-            alert('網站緩存及所有儲存資料已清除！頁面將重新載入。'); 
+            // --- 使用自定義 alert 替換原生 alert ---
+            await showCustomAlert('網站緩存及所有儲存資料已清除！頁面將重新載入。'); 
+            // --- 替換結束 ---
             window.location.reload(true); // 重新載入頁面，使用 true 強制從伺服器獲取
         } catch (error) {
             console.error('[Cache Clear] 清除緩存失敗:', error); 
-            alert('清除緩存失敗。');
+            // --- 使用自定義 alert 替換原生 alert ---
+            await showCustomAlert('清除緩存失敗。');
+            // --- 替換結束 ---
             clearCacheBtn.textContent = '立即清除'; 
             clearCacheBtn.disabled = false;
         }
@@ -948,8 +1014,10 @@ function initializePwaLogic(domElements) {
 
     // 5. 綁定主題切換開關事件
     if (themeToggleSwitch) themeToggleSwitch.addEventListener('change', toggleTheme);
+    // 6. 綁定推播通知切換開關事件
+    if (notificationToggleSwitch) notificationToggleSwitch.addEventListener('change', handleNotificationToggleChange);
 
-    // 6. 綁定隱藏按鈕 (全螢幕點擊) 事件
+    // 7. 綁定隱藏按鈕 (全螢幕點擊) 事件
     // 在這裡不使用 { once: true }，因為 handleInitialScreenClick 內部會移除監聽器
     // 這確保了如果初始化時 Service Worker 未準備好，用戶再次點擊仍有機會觸發。
     document.body.addEventListener('click', handleInitialScreenClick);

@@ -30,12 +30,6 @@
   </script>
 
   <style>
-    /* 
-      CSS 部分保持不變，因為您的 CSS 已經寫得相當好，
-      包含了深色模式、響應式設計和模態視窗的樣式。
-      `.custom-prompt-overlay` 和 `.custom-prompt` 樣式足以支援新增的通用模態框。
-      若有額外需要調整的細節，請再提出。
-    */
     body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; transition: background-color 0.3s, color 0.3s; -webkit-tap-highlight-color: transparent; }
     h1 { color: #5a4fcf; display: flex; align-items: baseline; flex-wrap: wrap; }
     h1 .subtitle {
@@ -291,12 +285,12 @@
         opacity: 0; 
         visibility: hidden; 
         transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out; 
-        pointer-events: none; 
+        pointer-events: none; /* 預設不攔截事件 */
     }
     .custom-prompt-overlay.visible {
         opacity: 1;
         visibility: visible; 
-        pointer-events: auto; 
+        pointer-events: auto; /* 顯示時攔截事件 */
     }
     /* === Reusable style for the content box of the prompt === */
     .custom-prompt {
@@ -309,8 +303,8 @@
         text-align: center;
         width: clamp(300px, 90vw, 500px);
         box-sizing: border-box;
-        transform: scale(0.9); 
-        transition: transform 0.3s ease-in-out; 
+        transform: scale(0.9); /* 初始縮小 */
+        transition: transform 0.3s ease-in-out; /* 縮放動畫 */
         position: relative;
         display: flex;
         flex-direction: column;
@@ -318,7 +312,7 @@
         gap: 15px;
     }
     .custom-prompt-overlay.visible .custom-prompt {
-        transform: scale(1);
+        transform: scale(1); /* 彈出時放大 */
     }
 
     body.dark-mode .custom-prompt {
@@ -409,7 +403,7 @@
         background-color: #483dbb;
     }
 
-    /* 新增的通用確認和提示模態框按鈕樣式 */
+    /* === 新增：通用確認和提示模態框按鈕樣式 === */
     #customConfirmModal #customConfirmOkButton,
     #customAlertModal #customAlertOkButton {
         background-color: #5a4fcf; /* 主要行動按鈕顏色 */
@@ -598,7 +592,7 @@
   <!-- === 新增：通用確認模態框 (用於取代 confirm()) === -->
   <div id="customConfirmModalOverlay" class="custom-prompt-overlay">
       <div id="customConfirmModal" class="custom-prompt">
-          <p id="customConfirmMessage" style="margin: 0; font-weight: bold;">您確定嗎？</p>
+          <p id="customConfirmMessage" style="margin: 0; font-weight: bold;"></p>
           <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px;">
               <button id="customConfirmOkButton">確定</button>
               <button id="customConfirmCancelButton">取消</button>
@@ -609,7 +603,7 @@
   <!-- === 新增：通用提示模態框 (用於取代 alert()) === -->
   <div id="customAlertModalOverlay" class="custom-prompt-overlay">
       <div id="customAlertModal" class="custom-prompt">
-          <p id="customAlertMessage" style="margin: 0;">操作完成！</p>
+          <p id="customAlertMessage" style="margin: 0;"></p>
           <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px;">
               <button id="customAlertOkButton">我知道了</button>
           </div>
@@ -625,14 +619,14 @@
 
   <!-- === START: Main Application Logic JavaScript === -->
   <script>
-    // 定義 PWA_SUB_PATH，確保在 index.html 腳本中使用時也可用
-    // !!! 重要：本地開發時，請將此處設為 '/frontend/public' (與 Live Server 的根路徑匹配) !!!
-    // !!! 部署到 GitHub Pages 等子路徑時，請設為 '/your-repo-name'，例如 '/jigong-news' !!!
-    // 例如，如果您的網站是 https://username.github.io/jigong-news/，則設定為 '/jigong-news'
-    // 如果您的網站是 https://www.yourdomain.com/，則設定為 ''
-    const PWA_SUB_PATH = '/jigong-news'; // <--- 已根據您的新要求設定為本地開發路徑！
-
     document.addEventListener('DOMContentLoaded', (event) => {
+        // 定義 PWA_SUB_PATH，確保在 index.html 腳本中使用時也可用
+        // !!! 重要：本地開發時，請將此處設為 '' (空字串) !!!
+        // !!! 部署到 GitHub Pages 等子路徑時，請設為 '/your-repo-name'，例如 '/jigong-news' !!!
+        // --- 根據您的指示，這裡修改為 /frontend/public，但通常部署到 Github Pages 會是 /your-repo-name ---
+        const PWA_SUB_PATH = '/jigong-news'; // <--- 已修改為本地開發的正確路徑！
+
+
         // === DOM 元素緩存 ===
         // 將常用到的 DOM 元素先查詢並儲存起來，避免重複查詢，提高效能和可讀性。
         const contentContainer = document.getElementById("content");
@@ -672,8 +666,9 @@
           if (!/^https?:\/\//i.test(imagePath)) {
             // 如果是相對路徑，則根據 PWA_SUB_PATH 組成完整 URL
             // 確保路徑處理正確，移除開頭斜線並替換反斜線
+            // 使用 URL 構造函數確保路徑拼接的健壯性
             const PWA_BASE_URL = window.location.origin + PWA_SUB_PATH; 
-            return `${PWA_BASE_URL}/${imagePath.replace(/\\/g, '/').replace(/^\//, '')}`;
+            return new URL(imagePath.replace(/\\/g, '/').replace(/^\//, ''), PWA_BASE_URL).href;
           }
           // 如果是絕對路徑，直接返回並將反斜線替換為正斜線
           return imagePath.replace(/\\/g, '/');
@@ -726,7 +721,10 @@
          * 從 posts.json 檔案獲取資料並渲染。
          */
         function fetchAndRender() {
-          fetch("posts.json")
+          // 使用 PWA_SUB_PATH 來構建 posts.json 的正確路徑
+          // 使用 URL 構造函數處理路徑，確保無論 PWA_SUB_PATH 是否有開頭斜線都能正確處理
+          const postsJsonUrl = new URL('posts.json', window.location.origin + PWA_SUB_PATH).href;
+          fetch(postsJsonUrl)
             .then(res => { 
               if (!res.ok) {
                 // 嘗試更友善的錯誤訊息，特別是對於 404 (Not Found)
@@ -884,6 +882,13 @@
                         const textToCopy = `網站連結：${siteToShareUrl}\n圖片連結：${imageUrl}`;
                         try {
                             await navigator.clipboard.writeText(textToCopy);
+                            // --- 使用自定義 alert 替換原生 alert ---
+                            if (typeof showCustomAlert === 'function') {
+                                showCustomAlert('連結已複製！');
+                            } else {
+                                alert('連結已複製！');
+                            }
+                            // --- 替換結束 ---
                             if (btn) { 
                                 const orig = btn.innerHTML; 
                                 btn.innerHTML = '✅ 已複製'; 
@@ -896,13 +901,13 @@
                             }
                         } catch (err) { 
                             console.error('無法複製連結: ', err); 
-                            // 這裡使用通用的 alert 模態框
-                            // alert('複製連結失敗。請手動複製以下內容：\n' + textToCopy);
-                            if (typeof customAlert === 'function') {
-                                customAlert('複製連結失敗。請手動複製以下內容：\n' + textToCopy);
+                            // --- 使用自定義 alert 替換原生 alert ---
+                            if (typeof showCustomAlert === 'function') {
+                                showCustomAlert('複製連結失敗。請手動複製以下內容：\n' + textToCopy);
                             } else {
                                 alert('複製連結失敗。請手動複製以下內容：\n' + textToCopy);
                             }
+                            // --- 替換結束 ---
                         }
                     }, 
                     icon: 'ICON/link.png'
@@ -911,8 +916,7 @@
 
             shares.forEach(share => {
                 const element = share.url ? document.createElement('a') : document.createElement('button');
-                // 確保分享圖標的路徑也考慮 PWA_SUB_PATH
-                const iconSrc = getImageUrl(share.icon); 
+                const iconSrc = getImageUrl(share.icon); // 確保分享圖標路徑正確
                 element.innerHTML = `<img src="${iconSrc}" alt="${share.name}" class="share-btn-icon">`; 
                 element.title = share.title || `分享到 ${share.name}`;
                 if (share.className) element.classList.add(share.className);
@@ -1075,12 +1079,13 @@
         fetchAndRender();
 
         // === PWA Logic Initialization (傳遞 DOM 元素給 pwa-notifications.js) ===
+        // 在這裡將 PWA_SUB_PATH 作為一個屬性傳遞，確保 pwa-notifications.js 能夠存取到
         const pwaDomElements = {
             settingsBtn: document.getElementById('settings-btn'),
             settingsPanel: document.getElementById('settings-panel'),
             closeSettingsBtn: document.getElementById('close-settings-btn'),
             notificationToggleSwitch: document.getElementById('notificationToggle'),
-            notificationLabel: document.querySelector('label[for="notificationToggle"]'),
+            notificationLabel: document.querySelector('label[for="notificationToggle"]'), // 傳遞標籤元素
             themeToggleSwitch: document.getElementById('themeToggleSwitch'),
             clearCacheBtn: document.getElementById('clear-cache-btn'),
             overlay: document.querySelector('.overlay'),
@@ -1092,6 +1097,7 @@
             // 新增：將通用模態框元素也傳遞過去
             customConfirmModalOverlay: document.getElementById('customConfirmModalOverlay'),
             customAlertModalOverlay: document.getElementById('customAlertModalOverlay'),
+            PWA_SUB_PATH: PWA_SUB_PATH // 將 PWA_SUB_PATH 傳遞給 PWA 邏輯腳本
         };
 
         // 確保 initializePwaLogic 函數存在於 pwa-notifications.js 中
