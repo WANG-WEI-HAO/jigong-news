@@ -177,7 +177,7 @@ function initializePwaLogic(domElements) {
             `;
         } else { // default for Android/Desktop Chrome/Edge
             contentHTML = `
-                <p style="margin: 0;">希望每天自動收到濟公報更新嗎？</p>
+                <p style="margin: 0;">希望每天收到濟公報更新嗎？</p>
                 <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">安裝應用程式以獲取最佳體驗和推播通知！</p>
             `;
             buttonsHTML = `
@@ -846,11 +846,9 @@ function initializePwaLogic(domElements) {
                     e.preventDefault();
                     deferredPrompt = e;
                     console.log('[Init] beforeinstallprompt 事件已保存。');
-                    // 這裡不再立即顯示安裝提示，而是等待用戶點擊或適合的時機
-                    // 例如，您可以在設置面板中提供一個「安裝應用程式」按鈕，然後調用 deferredPrompt.prompt()
-                    // 為了本例的自動行為，目前還是依賴瀏覽器自行決定彈出時機
-                    // 如果您想強制在 beforeinstallprompt 後立即彈出，可以像這樣：
-                    // showCustomInstallPrompt('default');
+                    // 當瀏覽器觸發 beforeinstallprompt 事件時 (適用於 Android/桌面版 Chrome/Edge)，
+                    // 表示應用程式是可安裝的。我們立即顯示自定義的安裝提示視窗。
+                    showCustomInstallPrompt('default');
                 });
 
                 window.addEventListener('appinstalled', () => {

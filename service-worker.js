@@ -13,7 +13,7 @@ const BACKEND_BASE_URL = 'https://jigong-news-backend.onrender.com';
 
 // 每次更新預緩存資源時，請務必更新版本號以強制 Service Worker 更新
 // 緩存版本號必須不同於舊的，否則 Service Worker 不會重新安裝並更新緩存
-const CACHE_NAME = 'jigong-pwa-cache-v19'; // <--- 已更新版本號以強制更新
+const CACHE_NAME = 'jigong-pwa-cache-v20'; // <--- 已更新版本號以強制更新
 
 // 需要預緩存的資源列表
 // 確保所有本地資源的路徑都以 PWA_SUB_PATH 開頭
