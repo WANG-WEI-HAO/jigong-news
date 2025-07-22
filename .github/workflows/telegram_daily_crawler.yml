@@ -2,11 +2,11 @@ name: Telegram 每日自動爬蟲與內容更新
 
 on:
   schedule:
-    # 每天 UTC 時間 04:20 執行。
-    # 這對應台灣時間 (UTC+8) 的中午 12:20 (04:20 + 8 小時 = 12:20)。
+    # 每天 UTC 時間 22:30 執行。
+    # 這對應台灣時間 (UTC+8) 的隔天早上 06:30 (22:30 + 8 小時 = 隔天 06:30)。
     # 你可以根據需要調整 cron 表達式。
     # 更多關於 cron 的資訊: https://crontab.guru/
-    - cron: '20 04 * * *' # 分 時 日 月 週
+    - cron: '0 5 * * *' # 分 時 日 月 週
   
   workflow_dispatch: # 允許從 GitHub Actions 頁面手動觸發此工作流程，方便測試
 
@@ -123,6 +123,12 @@ jobs:
           # 檢查是否有實際變更被暫存。只有有變更時才執行 commit 和 push
           if ! git diff --staged --quiet; then
             git commit -m "docs: 自動更新 Telegram 內容與圖片連結" # 使用一個有意義的提交信息
+            
+            echo "嘗試拉取最新變更並重新整理本地分支..."
+            # 使用 --rebase 避免產生多餘的合併提交，保持歷史乾淨
+            # origin 是遠端名稱，main 是目標分支名
+            git pull --rebase origin main 
+
             git push # 將變更推送到當前分支 (通常是 main)
           else
             echo "沒有檢測到 'posts.json' 有變更，跳過提交。"
