@@ -5,7 +5,7 @@ on:
     # 每天 UTC 時間 22:50 執行，這對應台灣時間 (UTC+8) 的早上 6:50
     # 你可以根據需要調整 cron 表達式。
     # 更多關於 cron 的資訊: https://crontab.guru/
-    - cron: '00 04 * * *' 
+    - cron: '05 04 * * *' 
   
   workflow_dispatch: # 允許從 GitHub Actions 頁面手動觸發此工作流程，方便測試
 
