@@ -6,7 +6,7 @@ on:
     # 這對應台灣時間 (UTC+8) 的隔天早上 06:30 (22:30 + 8 小時 = 隔天 06:30)。
     # 你可以根據需要調整 cron 表達式。
     # 更多關於 cron 的資訊: https://crontab.guru/
-    - cron: '55 05 * * *' # 分 時 日 月 週
+    - cron: '10 06 * * *' # 分 時 日 月 週
   
   workflow_dispatch: # 允許從 GitHub Actions 頁面手動觸發此工作流程，方便測試
 
