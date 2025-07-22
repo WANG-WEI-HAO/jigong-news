@@ -315,8 +315,17 @@ async def main():
     print(f"--- 腳本結束運行於：{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
     print(f"總耗時：{total_duration:.2f} 秒")
 
+    # 執行完所有工作後發出每日通知
+    requests.post(
+        "https://jigong-news-backend.onrender.com/api/send-daily-notification",
+        headers={"Content-Type": "application/json"},
+        json={}
+    )
+
+
 # --- 運行主程式 ---
 # 使用 `with client:` 語法確保 Telethon 客戶端正確連接和斷開。
 # `client.loop.run_until_complete(main())` 運行異步的 `main` 函數。
-with client:
-    client.loop.run_until_complete(main())
+if __name__ == "__main__":
+    with client:
+        client.loop.run_until_complete(main())
