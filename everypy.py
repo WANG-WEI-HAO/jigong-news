@@ -197,6 +197,9 @@ async def main():
     # 這用於在最後與舊數據合併，確保新抓取的數據覆蓋舊數據。
     messages_processed_in_this_run_by_key = {}
 
+    # 新增一個標誌，用於判斷今天是否有任何圖片成功上傳到 ImgBB
+    any_new_image_uploaded_today = False
+
     # 4. 處理今天的訊息
     # 第二次遍歷：實際處理訊息 (只獲取今天範圍內的訊息)
     # `offset_date=MIN_DATE_TO_PROCESS - timedelta(seconds=1)` 和 `reverse=True`
@@ -215,13 +218,14 @@ async def main():
         msg_text_original = msg.text or ""
         msg_text_key = msg_text_original.strip()[:50] # 用於查找的文本鍵
 
-        img_bb_url = None
+        img_bb_url = None # 預設為 None
         current_post_lookup_key = (msg_date_tw_str, msg_text_key)
 
         # 檢查這條訊息是否已經在舊數據中存在，並且是否有圖片連結。
-        # 如果存在且有圖片連結，則直接使用舊連結，避免重複下載和上傳。
-        if current_post_lookup_key in existing_posts_by_key and existing_posts_by_key[current_post_lookup_key].get("image"):
-            img_bb_url = existing_posts_by_key[current_post_lookup_key]["image"]
+        existing_post_data = existing_posts_by_key.get(current_post_lookup_key)
+        if existing_post_data and existing_post_data.get("image"):
+            # 如果存在且有圖片連結，則直接使用舊連結，避免重複下載和上傳。
+            img_bb_url = existing_post_data["image"]
             # print(f"訊息 (ID:{msg.id}) 已有圖片連結，跳過上傳。") # 可選：用於除錯
         elif msg.photo: # 只有當沒有舊連結或舊連結為空，且訊息確實有圖片時，才處理新圖片
             # 圖片命名邏輯：日期_ID_文本片段.jpg
@@ -247,7 +251,13 @@ async def main():
                 print(f"正在下載訊息 (ID:{msg.id}) 的圖片...")
                 await client.download_media(msg.photo, file=photo_bytes_io)
                 print(f"圖片下載完成，大小：{photo_bytes_io.tell()} bytes。")
-                img_bb_url = await upload_to_imgbb(photo_bytes_io, file_name, photo_mime_type)
+                uploaded_url = await upload_to_imgbb(photo_bytes_io, file_name, photo_mime_type)
+                if uploaded_url:
+                    img_bb_url = uploaded_url
+                    # 只有當圖片成功上傳到 ImgBB 且是當天的訊息時，才設定此標誌
+                    any_new_image_uploaded_today = True
+                else:
+                    print(f"警告：圖片上傳失敗，訊息 (ID:{msg.id}) 將不包含圖片連結。")
             except Exception as e:
                 print(f"處理訊息 (ID:{msg.id}) 的圖片時發生錯誤: {e}")
                 img_bb_url = None # 確保錯誤時圖片連結為 None
@@ -276,51 +286,67 @@ async def main():
 
     print("\n") # 處理完成後打印一個換行符，確保後續輸出從新行開始
 
-    # 5. 合併所有數據並寫入 JSON 檔案
-    # 使用字典來進行精確的合併和去重，以 (date, text_key) 為主要鍵。
-    final_posts_map = {}
+    # 5. 根據是否有當天成功上傳的圖片來決定是否寫入 JSON 和發送通知
+    if any_new_image_uploaded_today:
+        print("檢測到今天有成功上傳的圖片，將寫入 JSON 並發送通知。")
 
-    # 1. 將所有舊數據放入合併字典，作為基礎數據
-    for post_key, post_data in existing_posts_by_key.items():
-        final_posts_map[post_key] = post_data
+        # 合併所有數據並寫入 JSON 檔案
+        # 使用字典來進行精確的合併和去重，以 (date, text_key) 為主要鍵。
+        final_posts_map = {}
 
-    # 2. 將本次運行處理的所有訊息（新的或更新的）覆蓋或添加到合併字典中
-    # 如果 `current_post_lookup_key` 相同，則 `messages_processed_in_this_run_by_key` 中的數據會覆蓋 `existing_posts_by_key` 中的數據
-    final_posts_map.update(messages_processed_in_this_run_by_key)
+        # 1. 將所有舊數據放入合併字典，作為基礎數據
+        for post_key, post_data in existing_posts_by_key.items():
+            final_posts_map[post_key] = post_data
 
-    # 3. 將合併後的字典值轉換為列表
-    final_posts = list(final_posts_map.values())
+        # 2. 將本次運行處理的所有訊息（新的或更新的）覆蓋或添加到合併字典中
+        # 如果 `current_post_lookup_key` 相同，則 `messages_processed_in_this_run_by_key` 中的數據會覆蓋 `existing_posts_by_key` 中的數據
+        final_posts_map.update(messages_processed_in_this_run_by_key)
 
-    # 4. 對所有數據進行排序：首先按日期降序，如果日期相同，則按訊息 ID 降序 (最新的在最上面)
-    # 這樣確保了 JSON 檔案中的貼文是從最新到最舊排列的。
-    final_posts.sort(key=lambda x: (
-        datetime.datetime.strptime(x['date'], '%Y-%m-%d'),
-        x.get('id', 0) # 如果有 id 則用 id 排序，否則用 0 (確保穩定性，舊數據可能沒有 id 欄位)
-    ), reverse=True) # 關鍵的 reverse=True 實現降序排列
+        # 3. 將合併後的字典值轉換為列表
+        final_posts = list(final_posts_map.values())
 
-    print(f"共擷取並準備寫入 {len(final_posts)} 筆資料到 {OUTPUT_JSON_FILE}。")
+        # 4. 對所有數據進行排序：首先按日期降序，如果日期相同，則按訊息 ID 降序 (最新的在最上面)
+        # 這樣確保了 JSON 檔案中的貼文是從最新到最舊排列的。
+        final_posts.sort(key=lambda x: (
+            datetime.datetime.strptime(x['date'], '%Y-%m-%d'),
+            x.get('id', 0) # 如果有 id 則用 id 排序，否則用 0 (確保穩定性，舊數據可能沒有 id 欄位)
+        ), reverse=True) # 關鍵的 reverse=True 實現降序排列
 
-    print(f"正在寫入 {OUTPUT_JSON_FILE} ...")
-    try:
-        with open(OUTPUT_JSON_FILE, "w", encoding="utf-8") as f:
-            # ensure_ascii=False 允許寫入非 ASCII 字元 (如中文) 而不轉義
-            # indent=2 使 JSON 輸出格式化，更易於閱讀
-            json.dump(final_posts, f, ensure_ascii=False, indent=2)
-        print("完成！數據已成功儲存。")
-    except Exception as e:
-        print(f"錯誤：寫入 {OUTPUT_JSON_FILE} 失敗: {e}")
+        print(f"共擷取並準備寫入 {len(final_posts)} 筆資料到 {OUTPUT_JSON_FILE}。")
+
+        print(f"正在寫入 {OUTPUT_JSON_FILE} ...")
+        try:
+            with open(OUTPUT_JSON_FILE, "w", encoding="utf-8") as f:
+                # ensure_ascii=False 允許寫入非 ASCII 字元 (如中文) 而不轉義
+                # indent=2 使 JSON 輸出格式化，更易於閱讀
+                json.dump(final_posts, f, ensure_ascii=False, indent=2)
+            print("完成！數據已成功儲存。")
+        except Exception as e:
+            print(f"錯誤：寫入 {OUTPUT_JSON_FILE} 失敗: {e}")
+
+        # 發送推播通知前新增等待時間
+        print("等待 10 秒後發送每日通知...")
+        await asyncio.sleep(10) # 增加 10 秒等待時間
+
+        try:
+            requests.post(
+                "https://jigong-news-backend.onrender.com/api/send-daily-notification",
+                headers={"Content-Type": "application/json"},
+                json={}
+            )
+            print("每日通知已發送。")
+        except requests.exceptions.RequestException as e:
+            print(f"發送每日通知失敗: {e}")
+        except Exception as e:
+            print(f"發送每日通知時發生意外錯誤: {e}")
+
+    else:
+        print("今天沒有新的圖片成功上傳到 ImgBB，因此跳過寫入 JSON 檔案和發送每日通知。")
 
     end_time = time.time() # 記錄腳本結束運行時間
     total_duration = end_time - start_time
     print(f"--- 腳本結束運行於：{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
     print(f"總耗時：{total_duration:.2f} 秒")
-
-    # 執行完所有工作後發出每日通知
-    requests.post(
-        "https://jigong-news-backend.onrender.com/api/send-daily-notification",
-        headers={"Content-Type": "application/json"},
-        json={}
-    )
 
 
 # --- 運行主程式 ---
