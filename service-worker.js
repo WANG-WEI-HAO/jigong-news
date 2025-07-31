@@ -5,7 +5,7 @@
 // 則 PWA_SUB_PATH 應該是 /your-repo-name。如果直接部署在根目錄，則為 '' (空字串)。
 // !!! 本地開發時，請將此處設為 '' (空字串) !!!
 // !!! 部署到 GitHub Pages 等子路徑時，請設為 '/your-repo-name'，例如 '/jigong-news' !!!
-const PWA_SUB_PATH = "/jigong-news-his"; // <--- 已修改為本地開發的正確路徑！
+const PWA_SUB_PATH = "/jigong-news"; // <--- 已修改為本地開發的正確路徑！
 // 部署到 GitHub Pages 時，再將其改回 '/jigong-news'
 
 // !!! 請在這裡替換為你的 Render 後端實際 URL (與 pwa-notifications.js 保持一致) !!!
