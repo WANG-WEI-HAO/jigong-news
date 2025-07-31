@@ -2,7 +2,7 @@
   "name": "濟公報",
   "short_name": "濟公報",
   "description": "崇德佛院濟公報，每日7:00更新，可安裝至桌面使用。",
-  "start_url": "/jigong-news-his",
+  "start_url": "/jigong-news",
   "display": "fullscreen",
   "background_color": "#f9f9f9",
   "theme_color": "#5a4fcf",
